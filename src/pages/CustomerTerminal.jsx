@@ -73,7 +73,7 @@ export default function CustomerTerminal({ onLogout }) {
                         <div>
                             <label className="block text-muted-foreground text-sm mb-2">Customer Phone Number</label>
                             <div className="flex gap-2">
-                                <div className="w-full text-5xl font-mono p-4 bg-gray-50 rounded-md border text-center text-foreground min-h-[5.5rem] flex items-center justify-center capitalize gap-3">
+                                <div className="flex-1 text-5xl font-mono p-4 bg-gray-50 rounded-md border text-center text-foreground min-h-[5.5rem] flex items-center justify-center capitalize gap-3">
                                     {Array.from({ length: 10 }).map((_, i) => (
                                         <React.Fragment key={i}>
                                             <span className={phone[i] ? "text-foreground" : "text-muted-foreground/30"}>
@@ -86,7 +86,7 @@ export default function CustomerTerminal({ onLogout }) {
                                 <Button
                                     variant="secondary"
                                     onClick={handleBackspace}
-                                    className="h-auto w-20 text-xl"
+                                    className="h-auto w-20 text-xl shrink-0"
                                 >
                                     ⌫
                                 </Button>
