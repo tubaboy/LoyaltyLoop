@@ -176,15 +176,15 @@ export default function CustomerTerminal({ onLogout }) {
             <main className="flex-1 overflow-hidden relative">
                 {/* View 1: Search (Keypad) */}
                 {view === 'search' && (
-                    <div className="h-full flex items-center justify-center p-8 bg-[#E1FF01] animate-in fade-in slide-in-from-bottom-4 duration-300">
-                        <Card className="w-full max-w-2xl p-10 bg-white shadow-brutalist-lg">
-                            <CardContent className="p-0 flex flex-col gap-10">
-                                <div className="space-y-6">
-                                    <label className="block text-center text-3xl font-black uppercase tracking-tight">
+                    <div className="h-full flex items-center justify-center p-4 bg-[#E1FF01] animate-in fade-in slide-in-from-bottom-4 duration-300">
+                        <Card className="w-full max-w-lg p-6 bg-white shadow-brutalist-lg">
+                            <CardContent className="p-0 flex flex-col gap-4">
+                                <div className="space-y-2">
+                                    <label className="block text-center text-xl font-black uppercase tracking-tight">
                                         Enter Phone Number
                                     </label>
-                                    <div className="flex gap-4">
-                                        <div className="flex-1 bg-white border-4 border-black h-28 flex items-center justify-center text-6xl font-black tracking-widest shadow-inner">
+                                    <div className="flex gap-2">
+                                        <div className="flex-1 bg-white border-4 border-black h-20 flex items-center justify-center text-4xl font-black tracking-widest shadow-inner">
                                             {Array.from({ length: 10 }).map((_, i) => (
                                                 <React.Fragment key={i}>
                                                     <span className={phone[i] ? "text-black" : "text-gray-200"}>
@@ -197,21 +197,21 @@ export default function CustomerTerminal({ onLogout }) {
                                         <Button
                                             variant="secondary"
                                             onClick={handleBackspace}
-                                            className="h-28 w-28 text-4xl shrink-0"
+                                            className="h-20 w-20 text-2xl shrink-0"
                                         >
                                             ⌫
                                         </Button>
                                     </div>
                                 </div>
 
-                                <div className="grid grid-cols-3 gap-6">
+                                <div className="grid grid-cols-3 gap-3">
                                     {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(num => (
                                         <Button
                                             key={num}
                                             variant="outline"
                                             size="xl"
                                             onClick={() => handleNumClick(num.toString())}
-                                            className="h-32 text-5xl font-black"
+                                            className="h-20 text-4xl font-black"
                                         >
                                             {num}
                                         </Button>
@@ -220,7 +220,7 @@ export default function CustomerTerminal({ onLogout }) {
                                         variant="destructive"
                                         size="xl"
                                         onClick={handleClear}
-                                        className="h-32 text-4xl font-black"
+                                        className="h-20 text-2xl font-black"
                                     >
                                         CLR
                                     </Button>
@@ -228,7 +228,7 @@ export default function CustomerTerminal({ onLogout }) {
                                         variant="outline"
                                         size="xl"
                                         onClick={() => handleNumClick('0')}
-                                        className="h-32 text-5xl font-black"
+                                        className="h-20 text-4xl font-black"
                                     >
                                         0
                                     </Button>
@@ -236,7 +236,7 @@ export default function CustomerTerminal({ onLogout }) {
                                         size="xl"
                                         onClick={handleGo}
                                         disabled={phone.length < 10 || isLoading}
-                                        className="h-32 text-4xl font-black bg-black text-[#E1FF01] hover:bg-black/90 disabled:opacity-30"
+                                        className="h-20 text-3xl font-black bg-black text-[#E1FF01] hover:bg-black/90 disabled:opacity-30"
                                     >
                                         {isLoading ? '...' : 'GO'}
                                     </Button>
@@ -248,32 +248,32 @@ export default function CustomerTerminal({ onLogout }) {
 
                 {/* View 2: Action (Dashboard) */}
                 {view === 'action' && (
-                    <div className="h-full flex flex-col md:flex-row gap-8 p-10 max-w-screen-2xl mx-auto animate-in fade-in zoom-in-95 duration-300">
+                    <div className="h-full flex flex-col md:flex-row gap-4 p-4 max-w-screen-2xl mx-auto animate-in fade-in zoom-in-95 duration-300 overflow-hidden">
                         {/* Balance Card */}
-                        <Card className="flex-1 md:w-1/3 p-12 bg-[#E1FF01] flex flex-col justify-center items-center text-center shadow-brutalist-lg">
-                            <h2 className="text-2xl font-black uppercase tracking-widest mb-4">You Have</h2>
-                            <div className="text-[14rem] font-black leading-none tracking-tighter tabular-nums drop-shadow-[4px_4px_0px_#000]">
+                        <Card className="flex-1 md:w-1/3 p-6 bg-[#E1FF01] flex flex-col justify-center items-center text-center shadow-brutalist-lg min-h-0">
+                            <h2 className="text-xl font-black uppercase tracking-widest mb-2">You Have</h2>
+                            <div className="text-[8rem] xl:text-[10rem] font-black leading-none tracking-tighter tabular-nums drop-shadow-[4px_4px_0px_#000]">
                                 {points}
                             </div>
-                            <p className="mt-8 text-3xl font-black uppercase">Points</p>
+                            <p className="mt-4 text-2xl font-black uppercase">Points</p>
                         </Card>
 
                         {/* Actions Region */}
-                        <div className="flex-[2] flex flex-col gap-8">
+                        <div className="flex-[2] flex flex-col gap-4 min-h-0">
                             {/* Add Points */}
-                            <div className="flex-1 bg-white border-4 border-black p-8 shadow-brutalist flex flex-col gap-6">
-                                <h3 className="text-3xl font-black uppercase flex items-center gap-4">
-                                    <span className="w-12 h-12 bg-black text-[#E1FF01] flex items-center justify-center font-black">+</span>
+                            <div className="flex-1 bg-white border-4 border-black p-4 shadow-brutalist flex flex-col gap-2 min-h-0 overflow-y-auto">
+                                <h3 className="text-2xl font-black uppercase flex items-center gap-2 sticky top-0 bg-white z-10">
+                                    <span className="w-8 h-8 bg-black text-[#E1FF01] flex items-center justify-center font-black text-lg">+</span>
                                     Add Points
                                 </h3>
-                                <div className="grid grid-cols-4 gap-6 flex-1">
+                                <div className="grid grid-cols-4 gap-3 flex-1">
                                     {options.filter(o => o.type === 'add').map(opt => (
                                         <Button
                                             key={opt.id}
                                             disabled={isLoading}
                                             size="xl"
                                             onClick={() => handleAddPoint(opt.value)}
-                                            className="h-full text-5xl font-black"
+                                            className="h-full w-full text-2xl lg:text-3xl font-black px-2 whitespace-normal leading-tight"
                                         >
                                             {opt.label}
                                         </Button>
@@ -283,7 +283,7 @@ export default function CustomerTerminal({ onLogout }) {
                                         variant="outline"
                                         size="xl"
                                         onClick={() => setShowCustomInput(true)}
-                                        className="h-full text-2xl font-black uppercase"
+                                        className="h-full w-full text-xl lg:text-2xl font-black uppercase px-2"
                                     >
                                         Custom
                                     </Button>
@@ -291,23 +291,23 @@ export default function CustomerTerminal({ onLogout }) {
                             </div>
 
                             {/* Redeem Points */}
-                            <div className="flex-1 bg-black text-white p-8 shadow-brutalist flex flex-col gap-6">
-                                <h3 className="text-3xl font-black uppercase flex items-center gap-4">
-                                    <span className="w-12 h-12 bg-[#E1FF01] text-black flex items-center justify-center font-black">★</span>
+                            <div className="flex-1 bg-black text-white p-4 shadow-brutalist flex flex-col gap-2 min-h-0 overflow-y-auto">
+                                <h3 className="text-2xl font-black uppercase flex items-center gap-2 sticky top-0 bg-black z-10">
+                                    <span className="w-8 h-8 bg-[#E1FF01] text-black flex items-center justify-center font-black text-lg">★</span>
                                     Redeem Rewards
                                 </h3>
-                                <div className="grid grid-cols-3 gap-6 flex-1">
+                                <div className="grid grid-cols-3 gap-3 flex-1">
                                     {options.filter(o => o.type === 'redeem').map(opt => (
                                         <Button
                                             key={opt.id}
                                             disabled={isLoading}
                                             size="xl"
                                             onClick={() => handleRedeem(opt.value)}
-                                            className="h-full bg-white text-black border-4 border-[#E1FF01] shadow-none hover:bg-[#E1FF01] hover:translate-x-0 hover:translate-y-0"
+                                            className="h-full w-full bg-white text-black border-4 border-[#E1FF01] shadow-none hover:bg-[#E1FF01] hover:translate-x-0 hover:translate-y-0 px-2 whitespace-normal"
                                         >
-                                            <div className="flex flex-col items-center">
-                                                <span className="text-xl font-bold uppercase mb-2">-{opt.value} PTS</span>
-                                                <span className="text-center text-3xl font-black">{opt.label}</span>
+                                            <div className="flex flex-col items-center w-full">
+                                                <span className="text-sm font-bold uppercase mb-1 whitespace-nowrap">-{opt.value} PTS</span>
+                                                <span className="text-center text-lg lg:text-xl font-black leading-tight break-words w-full">{opt.label}</span>
                                             </div>
                                         </Button>
                                     ))}
