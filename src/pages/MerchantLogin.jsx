@@ -15,16 +15,16 @@ export default function MerchantLogin({ onLogin }) {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
-            <Card className="w-full max-w-md">
-                <CardHeader className="text-center">
-                    <CardTitle className="text-3xl font-bold">Loyalty Loop</CardTitle>
-                    <CardDescription>Merchant Terminal Access</CardDescription>
+        <div className="min-h-screen flex items-center justify-center bg-[#E1FF01] p-4 font-mono">
+            <Card className="w-full max-w-xl p-8">
+                <CardHeader className="text-center space-y-4">
+                    <CardTitle className="text-6xl font-black uppercase tracking-tighter">Loyalty Loop</CardTitle>
+                    <CardDescription className="text-xl font-bold text-black uppercase">Merchant Terminal Access</CardDescription>
                 </CardHeader>
-                <CardContent>
-                    <form onSubmit={handleSubmit} className="space-y-6">
-                        <div className="space-y-2">
-                            <label htmlFor="merchantId" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                <CardContent className="mt-8">
+                    <form onSubmit={handleSubmit} className="space-y-8">
+                        <div className="space-y-4">
+                            <label htmlFor="merchantId" className="text-2xl font-black uppercase">
                                 Store ID
                             </label>
                             <input
@@ -32,13 +32,13 @@ export default function MerchantLogin({ onLogin }) {
                                 id="merchantId"
                                 value={merchantId}
                                 onChange={(e) => setMerchantId(e.target.value)}
-                                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                                placeholder="Enter Store ID"
+                                className="flex h-20 w-full border-4 border-black bg-white px-6 py-4 text-3xl font-bold focus-visible:outline-none shadow-brutalist focus:translate-x-[2px] focus:translate-y-[2px] focus:shadow-none transition-all"
+                                placeholder="ENTER STORE ID"
                                 required
                             />
                         </div>
-                        <Button type="submit" className="w-full text-lg py-6">
-                            Enter Dashboard
+                        <Button type="submit" size="xl" className="w-full hover:bg-black hover:text-[#E1FF01]">
+                            ENTER DASHBOARD
                         </Button>
                     </form>
                 </CardContent>
