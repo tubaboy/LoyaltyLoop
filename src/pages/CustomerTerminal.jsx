@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { store } from '../lib/store';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ArrowLeft, X } from 'lucide-react';
 
 export default function CustomerTerminal({ onLogout }) {
+    const navigate = useNavigate();
     const [view, setView] = useState('search'); // 'search' | 'action'
     const [phone, setPhone] = useState('');
     const [points, setPoints] = useState(0);
@@ -154,6 +156,14 @@ export default function CustomerTerminal({ onLogout }) {
             {/* Header */}
             <header className="bg-white p-6 flex justify-between items-center border-b-4 border-black shrink-0 z-10">
                 <div className="flex items-center gap-4">
+                    {/* Back to Dashboard (Only if NOT in action view, or maybe always?) */}
+                    <Button
+                        variant="ghost"
+                        onClick={() => navigate('/dashboard')}
+                        className="text-xl font-bold uppercase underline"
+                    >
+                        Dashboard
+                    </Button>
                     {view === 'action' && (
                         <Button
                             variant="outline"
@@ -168,7 +178,10 @@ export default function CustomerTerminal({ onLogout }) {
                         {view === 'search' ? 'LOYALTY TERMINAL' : `CUSTOMER: ${phone}`}
                     </h1>
                 </div>
-                <Button variant="ghost" onClick={onLogout} className="text-xl font-bold uppercase underline">
+                <Button variant="ghost" onClick={async () => {
+                    await store.logout();
+                    navigate('/login');
+                }} className="text-xl font-bold uppercase underline">
                     Logout
                 </Button>
             </header>
@@ -320,35 +333,35 @@ export default function CustomerTerminal({ onLogout }) {
 
             {/* Custom Amount Overlay */}
             {showCustomInput && (
-                <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-8 animate-in fade-in duration-200">
-                    <Card className="w-full max-w-2xl p-10 bg-white shadow-brutalist-lg">
-                        <CardContent className="p-0 flex flex-col gap-10">
+                <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+                    <Card className="w-full max-w-lg p-6 bg-white shadow-brutalist-lg overflow-y-auto max-h-full">
+                        <CardContent className="p-0 flex flex-col gap-4">
                             <div className="flex justify-between items-center">
-                                <h3 className="text-4xl font-black uppercase">Custom Amount</h3>
+                                <h3 className="text-3xl font-black uppercase">Custom Amount</h3>
                                 <Button variant="ghost" onClick={() => setShowCustomInput(false)}>
-                                    <X className="h-10 w-10" />
+                                    <X className="h-8 w-8" />
                                 </Button>
                             </div>
 
-                            <div className="bg-white border-4 border-black h-32 flex items-center justify-center text-7xl font-black shadow-inner">
+                            <div className="bg-white border-4 border-black h-24 flex items-center justify-center text-6xl font-black shadow-inner shrink-0">
                                 {customAmount || '0'}
                             </div>
 
-                            <div className="grid grid-cols-3 gap-6">
+                            <div className="grid grid-cols-3 gap-3">
                                 {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(num => (
                                     <Button
                                         key={num}
                                         variant="outline"
                                         size="xl"
                                         onClick={() => handleCustomNumClick(num.toString())}
-                                        className="h-28 text-5xl font-black"
+                                        className="h-20 text-4xl font-black"
                                     >
                                         {num}
                                     </Button>
                                 ))}
-                                <Button onClick={handleCustomClear} variant="destructive" size="xl" className="h-28 text-4xl font-black" disabled={isLoading}>C</Button>
-                                <Button onClick={() => handleCustomNumClick('0')} variant="outline" size="xl" className="h-28 text-5xl font-black" disabled={isLoading}>0</Button>
-                                <Button onClick={handleCustomSubmit} size="xl" className="h-28 text-4xl font-black bg-black text-[#E1FF01] disabled:opacity-50" disabled={isLoading}>
+                                <Button onClick={handleCustomClear} variant="destructive" size="xl" className="h-20 text-3xl font-black" disabled={isLoading}>C</Button>
+                                <Button onClick={() => handleCustomNumClick('0')} variant="outline" size="xl" className="h-20 text-4xl font-black" disabled={isLoading}>0</Button>
+                                <Button onClick={handleCustomSubmit} size="xl" className="h-20 text-3xl font-black bg-black text-[#E1FF01] disabled:opacity-50" disabled={isLoading}>
                                     {isLoading ? '...' : 'OK'}
                                 </Button>
                             </div>

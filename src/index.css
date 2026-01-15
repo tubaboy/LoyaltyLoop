@@ -62,26 +62,30 @@
   --input: #FFFFFF;
   --ring: #000000;
   --radius: 0px;
-  
+
   /* Brutalist Shadows */
-  --shadow-brutalist: 4px 4px 0px 0px rgba(0,0,0,1);
-  --shadow-brutalist-lg: 8px 8px 0px 0px rgba(0,0,0,1);
-  --shadow-brutalist-hover: 2px 2px 0px 0px rgba(0,0,0,1);
+  --shadow-brutalist: 4px 4px 0px 0px rgba(0, 0, 0, 1);
+  --shadow-brutalist-lg: 8px 8px 0px 0px rgba(0, 0, 0, 1);
+  --shadow-brutalist-hover: 2px 2px 0px 0px rgba(0, 0, 0, 1);
 }
 
 @layer utilities {
   .shadow-brutalist {
     box-shadow: var(--shadow-brutalist);
   }
+
   .shadow-brutalist-lg {
     box-shadow: var(--shadow-brutalist-lg);
   }
+
   .border-b-2 {
     border-bottom-width: 2px;
   }
+
   .border-2 {
     border-width: 2px;
   }
+
   .border-4 {
     border-width: 4px;
   }
@@ -129,4 +133,84 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* SaaS Professional Theme Overrides */
+.theme-saas {
+  --background: #F0F2F5;
+  --foreground: #1E293B;
+  --card: #FFFFFF;
+  --card-foreground: #1E293B;
+  --primary: #0D9488;
+  /* Teal 600 */
+  --primary-foreground: #FFFFFF;
+  --secondary: #F8FAFC;
+  --secondary-foreground: #475569;
+  --muted: #F1F5F9;
+  --muted-foreground: #64748B;
+  --accent: #F1F5F9;
+  --accent-foreground: #0F172A;
+  --border: #E2E8F0;
+  --input: #F8FAFC;
+  --ring: #0D9488;
+  --radius: 16px;
+
+  /* Force Override Brutalist Elements inside SaaS theme */
+  & .border-black {
+    border-color: var(--border) !important;
+  }
+
+  & .border-2,
+  & .border-4 {
+    border-width: 1px !important;
+  }
+
+  & .shadow-brutalist,
+  & .shadow-brutalist-lg {
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1) !important;
+  }
+
+  & .rounded-none {
+    border-radius: var(--radius) !important;
+  }
+
+  & .bg-primary {
+    background-color: var(--primary) !important;
+    color: var(--primary-foreground) !important;
+  }
+
+  /* Professional Typography */
+  font-family: 'Inter',
+  system-ui,
+  -apple-system,
+  sans-serif;
+
+  /* Navigation Active State */
+  & .nav-active {
+    background-color: #FFFFFF !important;
+    color: #0D9488 !important;
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+  }
+}
+
+.theme-saas .sidebar-bg {
+  background: linear-gradient(135deg, #0D9488 0%, #14B8A6 100%);
+}
+
+.theme-saas .card {
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05) !important;
+  border-radius: 24px !important;
+  border: 1px solid rgba(226, 232, 240, 0.5) !important;
+}
+
+.theme-saas .button-premium {
+  background: linear-gradient(135deg, #0D9488 0%, #14B8A6 100%);
+  border-radius: 16px !important;
+  box-shadow: 0 4px 14px 0 rgba(13, 148, 136, 0.39);
+  transition: all 0.3s ease;
+}
+
+.theme-saas .button-premium:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(13, 148, 136, 0.23);
 }

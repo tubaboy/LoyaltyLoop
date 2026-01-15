@@ -1,35 +1,91 @@
 import { supabase } from './supabase';
 
 export const store = {
-    // Current merchant session (still tracked for now, but should move to Supabase Auth)
-    getMerchantId: () => localStorage.getItem('loyalty_merchant'),
+    // Auth
+    login: async (email, password) => {
+        const { data, error } = await supabase.auth.signInWithPassword({
+            email,
+            password,
+        });
+        if (error) throw error;
+        return data; // session
+    },
 
-    // Get points for a specific phone (creates customer record if not exists)
+    logout: async () => {
+        await supabase.auth.signOut();
+        localStorage.removeItem('loyalty_merchant'); // Cleanup legacy
+    },
+
+    isLoggedIn: async () => {
+        const { data: { session } } = await supabase.auth.getSession();
+        return !!session;
+    },
+
+    getUserRole: async (currentUser = null) => {
+        try {
+            let user = currentUser;
+
+            if (!user) {
+                console.log("[store] getUserRole: getting user from auth...");
+                const { data } = await supabase.auth.getUser();
+                user = data.user;
+            }
+
+            if (!user) {
+                console.log("[store] getUserRole: no user found");
+                return null;
+            }
+            console.log("[store] getUserRole: Starting query for:", user.id);
+            console.log("[store] getUserRole: Starting database query...");
+
+            const queryPromise = supabase.from('profiles').select('role').eq('id', user.id).maybeSingle();
+            const timeoutPromise = new Promise((_, reject) =>
+                setTimeout(() => reject(new Error('Database query timed out (10s)')), 10000)
+            );
+
+            try {
+                const { data: profile, error } = await Promise.race([queryPromise, timeoutPromise]);
+                console.log("[store] getUserRole: Query finished!", { profile, error });
+                if (error) throw error;
+                return profile?.role || null;
+            } catch (err) {
+                console.error("[store] getUserRole error:", err.message);
+                return null;
+            }
+        } catch (err) {
+            console.error("[store] getUserRole catch:", err);
+            return null;
+        }
+    },
+
+    // Get current User ID (Merchant ID)
+    getMerchantId: async () => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error('Not logged in');
+        return user.id;
+    },
+
+    // Get points for a specific phone
     getPoints: async (phone) => {
-        const merchantId = store.getMerchantId();
-        if (!merchantId) throw new Error('Not logged in');
+        const merchantId = await store.getMerchantId();
 
         // Try to find customer
         let { data: customer, error } = await supabase
             .from('customers')
             .select('points, id')
-            .eq('merchant_id', merchantId)
+            .eq('merchant_id', merchantId) // RLS enforces this, but good to be explicit
             .eq('phone', phone)
-            .single();
-
-        if (error && error.code === 'PGRST116') {
-            // Customer not found, return 0 (will create on first transaction)
-            return 0;
-        }
+            .maybeSingle(); // Use maybeSingle to avoid error on 0 rows
 
         if (error) throw error;
+        if (!customer) return 0;
+
         return customer.points;
     },
 
     // Add points
     addPoints: async (phone, amount = 1) => {
-        const merchantId = store.getMerchantId();
-        if (!merchantId) throw new Error('Not logged in');
+        const merchantId = await store.getMerchantId();
 
         // 1. Get or Create Customer
         let { data: customer, error: fetchError } = await supabase
@@ -37,9 +93,11 @@ export const store = {
             .select('id, points')
             .eq('merchant_id', merchantId)
             .eq('phone', phone)
-            .single();
+            .maybeSingle();
 
-        if (fetchError && fetchError.code === 'PGRST116') {
+        if (fetchError) throw fetchError;
+
+        if (!customer) {
             // Create new customer
             const { data: newCustomer, error: createError } = await supabase
                 .from('customers')
@@ -48,7 +106,7 @@ export const store = {
                 .single();
             if (createError) throw createError;
             customer = newCustomer;
-        } else if (customer) {
+        } else {
             // Update existing
             const { data: updatedCustomer, error: updateError } = await supabase
                 .from('customers')
@@ -62,10 +120,12 @@ export const store = {
 
         // 2. Log Transaction
         await supabase.from('transactions').insert([{
-            merchant_id: merchantId,
+            merchant_id: merchantId, // Explicitly set needed
             customer_id: customer.id,
             type: 'add',
-            amount: amount
+            amount: amount,
+            // branch_id: TODO - get from context/local storage?
+            // For now leave null or update later
         }]);
 
         return customer.points;
@@ -73,8 +133,7 @@ export const store = {
 
     // Redeem points
     redeemPoints: async (phone, amount) => {
-        const merchantId = store.getMerchantId();
-        if (!merchantId) throw new Error('Not logged in');
+        const merchantId = await store.getMerchantId();
 
         // 1. Get Customer
         const { data: customer, error: fetchError } = await supabase
@@ -82,7 +141,7 @@ export const store = {
             .select('id, points')
             .eq('merchant_id', merchantId)
             .eq('phone', phone)
-            .single();
+            .maybeSingle();
 
         if (fetchError || !customer) return false;
         if (customer.points < amount) return false;
@@ -108,16 +167,9 @@ export const store = {
         return updatedCustomer.points;
     },
 
-    // Auth (Simplified for now, using localStorage to store the merchant's UUID from Supabase Auth)
-    login: (merchantId) => {
-        localStorage.setItem('loyalty_merchant', merchantId);
-        return true;
-    },
-
     // Fetch dynamic options (Presets)
     getLoyaltyOptions: async () => {
-        const merchantId = store.getMerchantId();
-        if (!merchantId) throw new Error('Not logged in');
+        const merchantId = await store.getMerchantId();
 
         const { data, error } = await supabase
             .from('loyalty_options')
@@ -128,13 +180,5 @@ export const store = {
 
         if (error) throw error;
         return data;
-    },
-
-    logout: () => {
-        localStorage.removeItem('loyalty_merchant');
-    },
-
-    isLoggedIn: () => {
-        return !!localStorage.getItem('loyalty_merchant');
     }
 };
