@@ -58,11 +58,51 @@ export const store = {
         }
     },
 
-    // Get current User ID (Merchant ID)
+    // Terminal Session Management
+    verifyBranchKey: async (key) => {
+        // Query branches by key
+        // Note: Requires RLS to allow public select on branches where login_key matches, or global public read (less secure)
+        const { data, error } = await supabase
+            .from('branches')
+            .select('id, name, merchant_id, store_name:merchants(store_name)')
+            .eq('login_key', key)
+            .maybeSingle();
+
+        if (error) throw error;
+        if (!data) return null;
+
+        return {
+            branch_id: data.id,
+            branch_name: data.name,
+            merchant_id: data.merchant_id,
+            store_name: data.store_name?.store_name || 'Unknown Store'
+        };
+    },
+
+    setTerminalSession: (sessionData) => {
+        localStorage.setItem('loyalty_terminal_session', JSON.stringify(sessionData));
+    },
+
+    getTerminalSession: () => {
+        const data = localStorage.getItem('loyalty_terminal_session');
+        return data ? JSON.parse(data) : null;
+    },
+
+    clearTerminalSession: () => {
+        localStorage.removeItem('loyalty_terminal_session');
+    },
+
+    // Get current User ID (Merchant ID) or Terminal's Merchant ID
     getMerchantId: async () => {
+        // 1. Try Supabase Auth (Admin/Merchant Owner)
         const { data: { user } } = await supabase.auth.getUser();
-        if (!user) throw new Error('Not logged in');
-        return user.id;
+        if (user) return user.id;
+
+        // 2. Try Terminal Session
+        const terminalSession = store.getTerminalSession();
+        if (terminalSession?.merchant_id) return terminalSession.merchant_id;
+
+        throw new Error('Not logged in');
     },
 
     // Get points for a specific phone
@@ -86,6 +126,8 @@ export const store = {
     // Add points
     addPoints: async (phone, amount = 1) => {
         const merchantId = await store.getMerchantId();
+        const terminalSession = store.getTerminalSession();
+        const branchId = terminalSession?.branch_id || null;
 
         // 1. Get or Create Customer
         let { data: customer, error: fetchError } = await supabase
@@ -124,8 +166,7 @@ export const store = {
             customer_id: customer.id,
             type: 'add',
             amount: amount,
-            // branch_id: TODO - get from context/local storage?
-            // For now leave null or update later
+            branch_id: branchId
         }]);
 
         return customer.points;
@@ -134,6 +175,8 @@ export const store = {
     // Redeem points
     redeemPoints: async (phone, amount) => {
         const merchantId = await store.getMerchantId();
+        const terminalSession = store.getTerminalSession();
+        const branchId = terminalSession?.branch_id || null;
 
         // 1. Get Customer
         const { data: customer, error: fetchError } = await supabase
@@ -161,7 +204,8 @@ export const store = {
             merchant_id: merchantId,
             customer_id: customer.id,
             type: 'redeem',
-            amount: amount
+            amount: amount,
+            branch_id: branchId
         }]);
 
         return updatedCustomer.points;

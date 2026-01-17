@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { supabase } from '../../lib/supabase';
 import { store } from '../../lib/store';
-import { MapPin, Plus, Trash2, Edit2, Check, X, Phone } from 'lucide-react';
+import { MapPin, Plus, Trash2, Edit2, Phone, Key, Store, ArrowRight, RefreshCw } from 'lucide-react';
+import { cn } from "@/lib/utils";
 
 const BranchManagement = () => {
     const [branches, setBranches] = useState([]);
@@ -14,7 +15,7 @@ const BranchManagement = () => {
     const [editingId, setEditingId] = useState(null);
 
     // Form state
-    const [formData, setFormData] = useState({ name: '', address: '', phone: '' });
+    const [formData, setFormData] = useState({ name: '', address: '', phone: '', login_key: '' });
 
     useEffect(() => {
         fetchBranches();
@@ -48,7 +49,7 @@ const BranchManagement = () => {
             }
             setIsAdding(false);
             setEditingId(null);
-            setFormData({ name: '', address: '', phone: '' });
+            setFormData({ name: '', address: '', phone: '', login_key: '' });
             fetchBranches();
         } catch (err) {
             alert('儲存失敗');
@@ -62,78 +63,150 @@ const BranchManagement = () => {
     };
 
     return (
-        <div className="space-y-8 animate-in fade-in duration-500">
-            <div className="flex items-center justify-between">
+        <div className="space-y-10 animate-in fade-in duration-700">
+            {/* Page Header */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                 <div>
-                    <h2 className="text-3xl font-extrabold text-slate-900">分店管理</h2>
-                    <p className="text-slate-500 font-medium">管理您的連鎖門市與據點資訊。</p>
+                    <div className="flex items-center gap-3 mb-2">
+                        <div className="w-10 h-10 bg-teal-100 text-teal-600 rounded-xl flex items-center justify-center">
+                            <Store className="w-6 h-6" />
+                        </div>
+                        <h2 className="text-3xl font-black tracking-tight text-slate-900">分店管理中心</h2>
+                    </div>
+                    <p className="text-slate-500 font-medium ml-1">在此您可以管理所有連鎖門市的設備金鑰與聯繫資訊。</p>
                 </div>
-                {!isAdding && (
-                    <Button onClick={() => setIsAdding(true)} className="button-premium text-white px-6">
-                        <Plus className="mr-2 h-5 w-5" /> 新增分店
+                {!isAdding && !editingId && (
+                    <Button onClick={() => setIsAdding(true)} className="button-premium h-14 px-8 rounded-2xl text-lg group">
+                        <Plus className="mr-2 h-6 w-6 group-hover:rotate-90 transition-transform" /> 新增門市分店
                     </Button>
                 )}
             </div>
 
+            {/* Form Card */}
             {(isAdding || editingId) && (
-                <Card className="border-teal-100 bg-teal-50/30 shadow-lg p-6 rounded-3xl">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <div className="space-y-2">
-                            <Label className="font-bold text-slate-700">分店名稱</Label>
-                            <Input
-                                placeholder="例如：忠孝店"
-                                value={formData.name}
-                                onChange={e => setFormData({ ...formData, name: e.target.value })}
-                                className="bg-white rounded-xl h-12"
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label className="font-bold text-slate-700">地址</Label>
-                            <Input
-                                placeholder="完整地址"
-                                value={formData.address}
-                                onChange={e => setFormData({ ...formData, address: e.target.value })}
-                                className="bg-white rounded-xl h-12"
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label className="font-bold text-slate-700">電話</Label>
-                            <Input
-                                placeholder="聯絡電話"
-                                value={formData.phone}
-                                onChange={e => setFormData({ ...formData, phone: e.target.value })}
-                                className="bg-white rounded-xl h-12"
-                            />
-                        </div>
+                <Card className="border-none shadow-soft-2xl rounded-[2.5rem] bg-white overflow-hidden animate-in slide-in-from-top-4 duration-500">
+                    <div className="p-10 border-b border-slate-50 bg-slate-50/30">
+                        <h3 className="text-xl font-black text-slate-900 flex items-center gap-2">
+                            {editingId ? <Edit2 className="w-5 h-5 text-teal-600" /> : <Plus className="w-5 h-5 text-teal-600" />}
+                            {editingId ? '編輯門市資訊' : '建立新分店'}
+                        </h3>
                     </div>
-                    <div className="flex justify-end gap-3 mt-8">
-                        <Button variant="ghost" onClick={() => { setIsAdding(false); setEditingId(null); }} className="rounded-xl">取消</Button>
-                        <Button onClick={handleSave} className="bg-teal-600 hover:bg-teal-700 text-white px-8 rounded-xl font-bold">儲存分店</Button>
-                    </div>
+                    <CardContent className="p-10">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                            <div className="space-y-3">
+                                <Label className="font-black text-slate-900 ml-1 uppercase text-xs tracking-widest">分店名稱</Label>
+                                <Input
+                                    placeholder="例如：忠孝 SOGO 店"
+                                    value={formData.name}
+                                    onChange={e => setFormData({ ...formData, name: e.target.value })}
+                                    className="h-14 rounded-2xl bg-slate-50 border-transparent focus:bg-white focus:border-teal-500/30 transition-all font-bold px-5"
+                                />
+                            </div>
+                            <div className="space-y-3 lg:col-span-2">
+                                <Label className="font-black text-slate-900 ml-1 uppercase text-xs tracking-widest">門市地址</Label>
+                                <Input
+                                    placeholder="完整營運地址"
+                                    value={formData.address}
+                                    onChange={e => setFormData({ ...formData, address: e.target.value })}
+                                    className="h-14 rounded-2xl bg-slate-50 border-transparent focus:bg-white focus:border-teal-500/30 transition-all font-bold px-5"
+                                />
+                            </div>
+                            <div className="space-y-3">
+                                <Label className="font-black text-slate-900 ml-1 uppercase text-xs tracking-widest">聯絡電話</Label>
+                                <Input
+                                    placeholder="門市專線"
+                                    value={formData.phone}
+                                    onChange={e => setFormData({ ...formData, phone: e.target.value })}
+                                    className="h-14 rounded-2xl bg-slate-50 border-transparent focus:bg-white focus:border-teal-500/30 transition-all font-bold px-5"
+                                />
+                            </div>
+                            <div className="space-y-3">
+                                <Label className="font-black text-slate-900 ml-1 uppercase text-xs tracking-widest">系統登入金鑰 (8 碼)</Label>
+                                <div className="flex gap-2">
+                                    <Input
+                                        placeholder="手動輸入或自動產生"
+                                        value={formData.login_key || ''}
+                                        onChange={e => setFormData({ ...formData, login_key: e.target.value.replace(/[^0-9]/g, '').slice(0, 8) })}
+                                        className="h-14 rounded-2xl bg-slate-50 border-transparent focus:bg-white focus:border-teal-500/30 transition-all font-black tracking-[0.2em] text-center px-5 flex-1"
+                                        maxLength={8}
+                                    />
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        onClick={() => {
+                                            const randomKey = Math.floor(10000000 + Math.random() * 90000000).toString();
+                                            setFormData(prev => ({ ...prev, login_key: randomKey }));
+                                        }}
+                                        className="h-14 w-14 rounded-2xl bg-slate-100 hover:bg-teal-50 text-slate-600 hover:text-teal-600 transition-all flex-shrink-0"
+                                    >
+                                        <RefreshCw className="h-6 w-6" />
+                                    </Button>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="flex justify-end gap-4 mt-12 pt-8 border-t border-slate-50">
+                            <Button variant="ghost" onClick={() => { setIsAdding(false); setEditingId(null); }} className="h-14 px-8 rounded-2xl font-bold text-slate-400">放棄修改</Button>
+                            <Button onClick={handleSave} className="button-premium h-14 px-10 rounded-2xl text-lg">完成並儲存</Button>
+                        </div>
+                    </CardContent>
                 </Card>
             )}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            {/* List Section */}
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
                 {loading ? (
-                    <p>載入中...</p>
+                    <div className="col-span-full py-20 text-center">
+                        <RefreshCw className="w-10 h-10 text-teal-600/20 animate-spin mx-auto mb-4" />
+                        <p className="text-slate-400 font-bold uppercase tracking-widest text-sm">串聯門市資料中...</p>
+                    </div>
+                ) : branches.length === 0 ? (
+                    <div className="col-span-full py-24 bg-white rounded-[3rem] border-2 border-dashed border-slate-100 flex flex-col items-center justify-center text-center px-6">
+                        <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mb-6">
+                            <Store className="w-10 h-10 text-slate-300" />
+                        </div>
+                        <h3 className="text-2xl font-black text-slate-400 mb-2">尚未建立任何分店</h3>
+                        <p className="text-slate-400 max-w-xs mb-8">點擊上方按鈕開始建立您的第一個門市據點，並獲得登入金鑰。</p>
+                        <Button onClick={() => setIsAdding(true)} variant="outline" className="rounded-2xl h-12 px-6 border-slate-200 text-slate-600">現在新增</Button>
+                    </div>
                 ) : branches.map(branch => (
-                    <Card key={branch.id} className="border-none shadow-sm p-6 rounded-3xl group">
-                        <div className="flex justify-between items-start mb-4">
-                            <div className="bg-teal-50 p-3 rounded-2xl group-hover:bg-teal-600 transition-colors">
-                                <MapPin className="h-6 w-6 text-teal-600 group-hover:text-white" />
+                    <Card key={branch.id} className="border-none shadow-soft-lg p-8 rounded-[2.5rem] bg-white group hover:shadow-soft-2xl transition-all duration-500 relative overflow-hidden">
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-teal-500/5 rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-700" />
+
+                        <div className="flex justify-between items-start mb-6 relative z-10">
+                            <div className="bg-slate-50 p-4 rounded-2xl group-hover:bg-teal-600 group-hover:text-white transition-all duration-500 shadow-inner">
+                                <Store className="h-7 w-7" />
                             </div>
-                            <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <Button variant="ghost" size="icon" onClick={() => { setEditingId(branch.id); setFormData(branch); }} className="h-9 w-9 text-slate-400 hover:text-teal-600"><Edit2 className="h-4 w-4" /></Button>
-                                <Button variant="ghost" size="icon" onClick={() => handleDelete(branch.id)} className="h-9 w-9 text-slate-400 hover:text-red-600"><Trash2 className="h-4 w-4" /></Button>
+                            <div className="flex gap-2">
+                                <Button variant="ghost" size="icon" onClick={() => { setEditingId(branch.id); setFormData(branch); }} className="h-10 w-10 rounded-xl text-slate-300 hover:text-teal-600 hover:bg-teal-50 transition-all"><Edit2 className="h-5 w-5" /></Button>
+                                <Button variant="ghost" size="icon" onClick={() => handleDelete(branch.id)} className="h-10 w-10 rounded-xl text-slate-300 hover:text-red-500 hover:bg-red-50 transition-all"><Trash2 className="h-5 w-5" /></Button>
                             </div>
                         </div>
-                        <h3 className="text-xl font-bold text-slate-900">{branch.name}</h3>
-                        <div className="mt-4 space-y-2">
-                            <div className="flex items-center text-sm text-slate-500 font-medium">
-                                <MapPin className="h-4 w-4 mr-2 opacity-50" /> {branch.address || '未設定地址'}
+
+                        <div className="relative z-10">
+                            <h3 className="text-2xl font-black text-slate-900 group-hover:text-teal-700 transition-colors mb-1">{branch.name}</h3>
+                            <div className="flex items-center text-xs font-bold text-slate-400 uppercase tracking-widest mb-6">Active Terminal</div>
+
+                            <div className="space-y-4">
+                                <div className="flex items-start gap-3">
+                                    <MapPin className="h-5 w-5 text-slate-300 mt-0.5" />
+                                    <span className="text-sm font-bold text-slate-500 leading-relaxed">{branch.address || '未設定地址'}</span>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                    <Phone className="h-5 w-5 text-slate-300" />
+                                    <span className="text-sm font-bold text-slate-500">{branch.phone || '未設定電話'}</span>
+                                </div>
                             </div>
-                            <div className="flex items-center text-sm text-slate-500 font-medium">
-                                <Phone className="h-4 w-4 mr-2 opacity-50" /> {branch.phone || '未設定電話'}
+
+                            <div className="mt-8 pt-6 border-t border-slate-50 flex items-center justify-between">
+                                <div className="flex flex-col">
+                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Terminal Key</span>
+                                    <span className="text-lg font-black tracking-[0.15em] text-teal-600 font-mono">
+                                        {branch.login_key || '••••••••'}
+                                    </span>
+                                </div>
+                                <div className="bg-teal-50 px-4 py-2 rounded-xl text-teal-700 text-xs font-black uppercase tracking-widest">
+                                    正常運作
+                                </div>
                             </div>
                         </div>
                     </Card>

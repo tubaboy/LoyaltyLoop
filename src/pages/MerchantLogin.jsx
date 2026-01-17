@@ -4,7 +4,6 @@ import { supabase } from '../lib/supabase';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2 } from 'lucide-react';
 
 export default function MerchantLogin({ onLogin }) {
@@ -48,11 +47,11 @@ export default function MerchantLogin({ onLogin }) {
     };
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-8">
             <form className="space-y-6" onSubmit={handleSubmit}>
-                <div>
-                    <Label htmlFor="email">Email address</Label>
-                    <div className="mt-2">
+                <div className="space-y-2">
+                    <Label htmlFor="email" className="text-slate-900 font-bold ml-1">電子郵件信箱</Label>
+                    <div className="mt-1">
                         <Input
                             id="email"
                             name="email"
@@ -61,14 +60,15 @@ export default function MerchantLogin({ onLogin }) {
                             required
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
-                            className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-teal-600 sm:text-sm sm:leading-6"
+                            placeholder="admin@loyaltyloop.com"
+                            className="h-12 rounded-xl bg-slate-50 border-transparent focus:bg-white focus:border-teal-500/30 transition-all font-medium"
                         />
                     </div>
                 </div>
 
-                <div>
-                    <Label htmlFor="password">Password</Label>
-                    <div className="mt-2">
+                <div className="space-y-2">
+                    <Label htmlFor="password" name="password" className="text-slate-900 font-bold ml-1">登入密碼</Label>
+                    <div className="mt-1">
                         <Input
                             id="password"
                             name="password"
@@ -77,31 +77,32 @@ export default function MerchantLogin({ onLogin }) {
                             required
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
-                            className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-teal-600 sm:text-sm sm:leading-6"
+                            placeholder="••••••••"
+                            className="h-12 rounded-xl bg-slate-50 border-transparent focus:bg-white focus:border-teal-500/30 transition-all font-medium"
                         />
                     </div>
                 </div>
 
                 {error && (
-                    <Alert variant="destructive">
-                        <AlertDescription>{error}</AlertDescription>
-                    </Alert>
+                    <div className="p-4 bg-red-50 text-red-600 rounded-xl text-sm font-bold animate-in shake border border-red-100/50">
+                        {error}
+                    </div>
                 )}
 
                 {message && (
-                    <Alert className="bg-teal-50 border-teal-200">
-                        <AlertDescription className="text-teal-800 font-medium">{message}</AlertDescription>
-                    </Alert>
+                    <div className="p-4 bg-teal-50 text-teal-700 rounded-xl text-sm font-bold border border-teal-100/50">
+                        {message}
+                    </div>
                 )}
 
-                <div>
+                <div className="pt-2">
                     <Button
                         type="submit"
-                        className="flex w-full justify-center rounded-md bg-teal-600 px-3 py-1.5 text-sm font-semibold leading-6 text-white shadow-sm hover:bg-teal-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-600"
+                        variant="primary"
+                        className="w-full h-14 text-lg font-black rounded-2xl shadow-teal-200 shadow-xl"
                         disabled={isLoading}
                     >
-                        {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        {isSignUp ? '註冊帳號' : 'Sign in'}
+                        {isLoading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : (isSignUp ? '建立管理員帳號' : '登入系統')}
                     </Button>
                 </div>
             </form>
@@ -121,7 +122,7 @@ export default function MerchantLogin({ onLogin }) {
             </div>
 
             {!isSignUp && (
-                <div className="text-center text-xs text-slate-500 mt-4">
+                <div className="text-center text-xs text-slate-500 mt-4 font-medium">
                     商家帳號由管理員開立，若有疑問請連繫系統管理員。
                 </div>
             )}

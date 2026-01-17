@@ -8,9 +8,22 @@ import BranchManagement from './pages/merchant/BranchManagement';
 import RewardsManagement from './pages/merchant/RewardsManagement';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AuthLayout from './components/layouts/AuthLayout';
+import LandingPage from './pages/LandingPage';
+import TerminalLogin from './pages/TerminalLogin';
 import { store } from './lib/store';
 import { supabase } from './lib/supabase';
 import { Button } from "@/components/ui/button";
+
+// Terminal Route Wrapper
+const TerminalRoute = ({ children }) => {
+  const session = store.getTerminalSession();
+  if (!session) {
+    return <Navigate to="/terminal-login" replace />;
+  }
+  return children;
+};
+
+
 
 // Error Boundary Component
 class ErrorBoundary extends React.Component {
@@ -47,9 +60,9 @@ const ProtectedRoute = ({ children, allowedRole, userRole, hasSession }) => {
   // If role is still loading or null despite having a session
   if (userRole === null) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-[#F0F2F5] theme-saas p-4">
+      <div className="flex flex-col items-center justify-center min-h-screen bg-slate-50 theme-saas p-4">
         <div className="w-12 h-12 border-4 border-teal-600 border-t-transparent rounded-full animate-spin mb-6"></div>
-        <h1 className="text-xl font-bold text-slate-800">正在同步帳號資料...</h1>
+        <h1 className="text-xl font-black text-slate-800 tracking-tight">正在同步帳號資料...</h1>
         <p className="text-slate-500 mt-2 mb-6 text-center max-w-md">
           系統已偵測到登入狀態，正在從資料庫讀取您的權限設定。
         </p>
@@ -184,12 +197,32 @@ function App() {
     };
   }, []);
 
+  // Auto-retry fetchRole if stuck in "Synchronizing" state
+  useEffect(() => {
+    let intervalId;
+    if (session && userRole === null && !loading) {
+      console.log("[App] ⚠️ Detected stuck 'Synchronizing' state. Starting auto-retry...");
+      intervalId = setInterval(() => {
+        if (!fetchingRef.current) {
+          console.log("[App] 🔄 Auto-retrying fetchRole...");
+          fetchRole(session.user);
+        }
+      }, 2000);
+    }
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [session, userRole, loading]);
+
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-[#F0F2F5] theme-saas font-sans">
+      <div className="flex items-center justify-center min-h-screen bg-slate-50 theme-saas font-sans">
         <div className="flex flex-col items-center">
-          <div className="w-12 h-12 border-4 border-teal-600 border-t-transparent rounded-full animate-spin mb-4"></div>
-          <div className="text-teal-700 font-bold tracking-tight">LoyaltyLoop 載入中...</div>
+          <div className="w-12 h-12 border-4 border-teal-600 border-t-transparent rounded-full animate-spin mb-6"></div>
+          <div className="text-slate-900 font-black text-2xl tracking-tighter">
+            Loyalty<span className="text-teal-600">Loop</span>
+          </div>
+          <div className="text-slate-400 font-bold mt-2 text-sm tracking-widest uppercase">載入中...</div>
         </div>
       </div>
     );
@@ -201,6 +234,9 @@ function App() {
     <ErrorBoundary>
       <BrowserRouter basename={import.meta.env.BASE_URL || "/LoyaltyLoop"}>
         <Routes>
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/terminal-login" element={<TerminalLogin />} />
+
           <Route path="/login" element={
             !session ? (
               <AuthLayout>
@@ -223,7 +259,6 @@ function App() {
             <Route index element={<MerchantDashboard />} />
             <Route path="branches" element={<BranchManagement />} />
             <Route path="rewards" element={<RewardsManagement />} />
-            <Route path="settings" element={<div>Settings (Working on it!)</div>} />
           </Route>
 
           {/* Admin Routes */}
@@ -237,17 +272,15 @@ function App() {
 
           {/* Terminal */}
           <Route path="/terminal" element={
-            <ProtectedRoute userRole={userRole} hasSession={!!session}>
-              <div className="h-screen bg-slate-100 flex items-center justify-center">
+            <TerminalRoute>
+              <div className="h-screen bg-slate-50 flex items-center justify-center">
                 <CustomerTerminal />
               </div>
-            </ProtectedRoute>
+            </TerminalRoute>
           } />
 
           {/* Default Redirect */}
-          <Route path="*" element={
-            <Navigate to={!session ? "/login" : (userRole === 'admin' ? "/admin" : "/dashboard")} replace />
-          } />
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>
     </ErrorBoundary>
