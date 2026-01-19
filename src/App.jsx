@@ -13,6 +13,7 @@ import TerminalLogin from './pages/TerminalLogin';
 import { store } from './lib/store';
 import { supabase } from './lib/supabase';
 import { Button } from "@/components/ui/button";
+import { useVisualTier } from './hooks/useVisualTier';
 
 // Terminal Route Wrapper
 const TerminalRoute = ({ children }) => {
@@ -87,6 +88,7 @@ const ProtectedRoute = ({ children, allowedRole, userRole, hasSession }) => {
 };
 
 function App() {
+  useVisualTier();
   const [session, setSession] = useState(null);
   const [userRole, setUserRole] = useState(null); // 'admin', 'merchant', or null
   const [loading, setLoading] = useState(true);

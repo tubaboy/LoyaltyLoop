@@ -209,7 +209,7 @@ export default function CustomerTerminal({ onLogout }) {
 
                                         {/* Large Phone Display */}
                                         <div className="relative group">
-                                            <div className="absolute -inset-2 bg-gradient-to-r from-teal-500/20 to-cyan-500/20 rounded-[3rem] blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                                            <div className="absolute -inset-2 bg-gradient-to-r from-teal-500/20 to-cyan-500/20 rounded-[3rem] opacity-0 group-hover:opacity-100 transition-opacity duration-500" style={{ filter: 'blur(var(--ui-blur-md))' }} />
                                             <div className="relative flex items-center justify-center h-24 lg:h-32 bg-slate-50 rounded-[2.5rem] border-2 border-transparent group-focus-within:border-teal-500/30 group-focus-within:bg-white transition-all duration-300 shadow-inner">
                                                 <div className="flex gap-2 items-center">
                                                     {Array.from({ length: 10 }).map((_, i) => (
@@ -307,7 +307,7 @@ export default function CustomerTerminal({ onLogout }) {
                                 {/* Points Display Card (Integrated Customer Info) */}
                                 <Card className="bg-gradient-to-br from-teal-600 to-cyan-700 text-white p-6 md:p-8 lg:p-10 flex flex-col justify-between relative shadow-soft-2xl min-h-[260px] md:min-h-[280px] shrink-0 border-0 rounded-[2.5rem] overflow-hidden">
                                     {/* Decorative Background */}
-                                    <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-20 -mt-20 blur-2xl pointer-events-none" />
+                                    <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-20 -mt-20 blur-2xl pointer-events-none" style={{ filter: 'blur(var(--ui-blur-md))' }} />
 
                                     {/* Header: Customer Info */}
                                     <div className="relative z-10 w-full flex justify-between items-start border-b border-white/20 pb-4 mb-4">
@@ -444,7 +444,7 @@ export default function CustomerTerminal({ onLogout }) {
             {/* Custom Amount Overlay */}
             {
                 showCustomInput && (
-                    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-300">
+                    <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 animate-in fade-in duration-300" style={{ backdropFilter: 'var(--ui-backdrop-blur)', WebkitBackdropFilter: 'var(--ui-backdrop-blur)' }}>
                         <Card className="w-full max-w-lg md:max-w-4xl p-6 md:p-10 bg-white shadow-soft-2xl rounded-[2.5rem] md:rounded-[3rem] border-0 overflow-hidden">
                             <CardContent className="p-0 grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-12">
                                 {/* Left Side: Display & Header */}

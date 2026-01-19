@@ -81,8 +81,8 @@ const TerminalLogin = () => {
         <div className="h-screen bg-[#F8FAFC] flex items-center justify-center p-4 font-sans relative overflow-y-auto">
             {/* Decorative Elements */}
             <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
-                <div className="absolute top-[-10%] right-[-10%] w-[50%] h-[50%] bg-teal-400/10 rounded-full blur-[120px]" />
-                <div className="absolute bottom-[-10%] left-[-10%] w-[50%] h-[50%] bg-indigo-400/10 rounded-full blur-[120px]" />
+                <div className="absolute top-[-10%] right-[-10%] w-[50%] h-[50%] bg-teal-400/10 rounded-full" style={{ filter: 'blur(var(--ui-blur-lg))' }} />
+                <div className="absolute bottom-[-10%] left-[-10%] w-[50%] h-[50%] bg-indigo-400/10 rounded-full" style={{ filter: 'blur(var(--ui-blur-lg))' }} />
             </div>
 
             <Button
