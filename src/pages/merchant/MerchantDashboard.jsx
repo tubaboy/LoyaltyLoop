@@ -46,7 +46,7 @@ const MerchantDashboard = () => {
                 .eq('merchant_id', merchantId)
                 .eq('type', 'add');
 
-            const totalPoints = transData?.reduce((acc, curr) => acc + curr.amount, 0) || 0;
+            const totalPoints = (transData && transData.reduce) ? transData.reduce((acc, curr) => acc + curr.amount, 0) : 0;
 
             const { count: branchCount } = await supabase
                 .from('branches')

@@ -55,7 +55,7 @@ const DashboardLayout = ({ role = 'merchant' }) => {
                     </div>
                     <div className="w-full mt-4 p-4 rounded-2xl bg-black/20 border border-white/5 flex items-center gap-3">
                         <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-xs font-bold text-slate-300">
-                            {userEmail?.[0]?.toUpperCase()}
+                            {userEmail && userEmail[0] ? userEmail[0].toUpperCase() : ''}
                         </div>
                         <div className="flex-1 overflow-hidden">
                             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">目前帳號</p>

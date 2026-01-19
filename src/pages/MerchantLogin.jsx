@@ -28,7 +28,7 @@ export default function MerchantLogin({ onLogin }) {
                 });
                 if (signUpError) throw signUpError;
 
-                if (data?.user?.identities?.length === 0) {
+                if (data && data.user && data.user.identities && data.user.identities.length === 0) {
                     setMessage('該 Email 已被註冊，請直接登入');
                     setIsSignUp(false);
                 } else {

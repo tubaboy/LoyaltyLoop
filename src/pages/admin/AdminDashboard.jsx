@@ -116,7 +116,7 @@ const AdminDashboard = () => {
     const handleEditClick = (merchant) => {
         setEditingMerchant({
             id: merchant.id,
-            store_name: merchant.merchants?.store_name || ''
+            store_name: (merchant.merchants && merchant.merchants.store_name) || ''
         });
         setShowEditMerchant(true);
         setOpenDropdown(null);
@@ -244,7 +244,7 @@ const AdminDashboard = () => {
                                         <tr key={merchant.id} className="hover:bg-slate-50/80 transition-all duration-300 group">
                                             <td className="px-10 py-8">
                                                 <div className="font-black text-xl text-slate-900 group-hover:text-teal-700 transition-colors">
-                                                    {merchant.merchants?.store_name || "未命名品牌"}
+                                                    {(merchant.merchants && merchant.merchants.store_name) || "未命名品牌"}
                                                 </div>
                                             </td>
                                             <td className="px-10 py-8">

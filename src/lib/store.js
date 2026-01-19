@@ -47,7 +47,7 @@ export const store = {
                 const { data: profile, error } = await Promise.race([queryPromise, timeoutPromise]);
                 console.log("[store] getUserRole: Query finished!", { profile, error });
                 if (error) throw error;
-                return profile?.role || null;
+                return (profile && profile.role) || null;
             } catch (err) {
                 console.error("[store] getUserRole error:", err.message);
                 return null;
@@ -75,7 +75,7 @@ export const store = {
             branch_id: data.id,
             branch_name: data.name,
             merchant_id: data.merchant_id,
-            store_name: data.store_name?.store_name || 'Unknown Store'
+            store_name: (data.store_name && data.store_name.store_name) || 'Unknown Store'
         };
     },
 
@@ -100,7 +100,7 @@ export const store = {
 
         // 2. Try Terminal Session
         const terminalSession = store.getTerminalSession();
-        if (terminalSession?.merchant_id) return terminalSession.merchant_id;
+        if (terminalSession && terminalSession.merchant_id) return terminalSession.merchant_id;
 
         throw new Error('Not logged in');
     },
@@ -127,7 +127,7 @@ export const store = {
     addPoints: async (phone, amount = 1) => {
         const merchantId = await store.getMerchantId();
         const terminalSession = store.getTerminalSession();
-        const branchId = terminalSession?.branch_id || null;
+        const branchId = (terminalSession && terminalSession.branch_id) || null;
 
         // 1. Get or Create Customer
         let { data: customer, error: fetchError } = await supabase
@@ -176,7 +176,7 @@ export const store = {
     redeemPoints: async (phone, amount) => {
         const merchantId = await store.getMerchantId();
         const terminalSession = store.getTerminalSession();
-        const branchId = terminalSession?.branch_id || null;
+        const branchId = (terminalSession && terminalSession.branch_id) || null;
 
         // 1. Get Customer
         const { data: customer, error: fetchError } = await supabase

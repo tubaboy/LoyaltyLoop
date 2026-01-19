@@ -43,7 +43,7 @@ class ErrorBoundary extends React.Component {
       return (
         <div className="p-10 text-center bg-red-50 min-h-screen theme-saas">
           <h1 className="text-2xl font-bold text-red-800">系統發生錯誤</h1>
-          <p className="text-red-600 mt-2">{this.state.error?.message || "不明原因的錯誤"}</p>
+          <p className="text-red-600 mt-2">{(this.state.error && this.state.error.message) || "不明原因的錯誤"}</p>
           <Button onClick={() => window.location.reload()} className="mt-4 bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg">重試</Button>
         </div>
       );
@@ -182,7 +182,7 @@ function App() {
     init();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      console.log("[App] 🔄 Auth state changed:", _event, session?.user?.email || "none");
+      console.log("[App] 🔄 Auth state changed:", _event, (session && session.user && session.user.email) || "none");
       if (mounted) {
         setSession(session);
         if (session) {
