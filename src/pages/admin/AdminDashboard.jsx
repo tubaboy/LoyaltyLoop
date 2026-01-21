@@ -1,16 +1,28 @@
 import React, { useState, useEffect } from 'react';
+import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { supabase } from '../../lib/supabase';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Search, MoreHorizontal, UserCheck, ExternalLink, RefreshCw, Trash2, Edit3, ShieldCheck } from 'lucide-react';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { Plus, Search, MoreHorizontal, UserCheck, ExternalLink, RefreshCw, Trash2, Edit3, ShieldCheck, Mail, Phone, MapPin, User, Hash, Lock, Copy, Check, Activity } from 'lucide-react';
 
 const AdminDashboard = () => {
     const [merchants, setMerchants] = useState([]);
     const [loading, setLoading] = useState(true);
 
     const [showAddMerchant, setShowAddMerchant] = useState(false);
-    const [newMerchant, setNewMerchant] = useState({ email: '', password: '', store_name: '' });
+    const [newMerchant, setNewMerchant] = useState({
+        email: '',
+        password: '',
+        store_name: '',
+        contact_person: '',
+        contact_phone: '',
+        contact_address: '',
+        tax_id: '',
+        status: 'active'
+    });
 
     const [showEditMerchant, setShowEditMerchant] = useState(false);
     const [editingMerchant, setEditingMerchant] = useState(null);
@@ -31,7 +43,14 @@ const AdminDashboard = () => {
                 role,
                 created_at,
                 merchants (
-                    store_name
+                    store_name,
+                    contact_person,
+                    contact_phone,
+                    contact_address,
+                    tax_id,
+                    email,
+                    recovery_password,
+                    status
                 )
             `)
                 .eq('role', 'merchant')
@@ -65,13 +84,20 @@ const AdminDashboard = () => {
             const userId = authData.user.id;
             const isAutoSignedIn = authData.session !== null;
 
-            await supabase
-                .from('profiles')
-                .upsert({ id: userId, role: 'merchant' });
-
+            // Update merchant details (the 'handle_new_user' trigger already created the base record)
             await supabase
                 .from('merchants')
-                .upsert({ id: userId, store_name: newMerchant.store_name });
+                .upsert({
+                    id: userId,
+                    store_name: newMerchant.store_name,
+                    contact_person: newMerchant.contact_person,
+                    contact_phone: newMerchant.contact_phone,
+                    contact_address: newMerchant.contact_address,
+                    tax_id: newMerchant.tax_id,
+                    email: newMerchant.email,
+                    recovery_password: newMerchant.password,
+                    status: newMerchant.status
+                });
 
             alert("商家帳號建立成功！");
 
@@ -98,7 +124,14 @@ const AdminDashboard = () => {
 
             const { error } = await supabase
                 .from('merchants')
-                .update({ store_name: editingMerchant.store_name })
+                .update({
+                    store_name: editingMerchant.store_name,
+                    contact_person: editingMerchant.contact_person,
+                    contact_phone: editingMerchant.contact_phone,
+                    contact_address: editingMerchant.contact_address,
+                    tax_id: editingMerchant.tax_id,
+                    status: editingMerchant.status
+                })
                 .eq('id', editingMerchant.id);
 
             if (error) throw error;
@@ -114,9 +147,17 @@ const AdminDashboard = () => {
     };
 
     const handleEditClick = (merchant) => {
+        const m = merchant.merchants || {};
         setEditingMerchant({
             id: merchant.id,
-            store_name: (merchant.merchants && merchant.merchants.store_name) || ''
+            store_name: m.store_name || '',
+            contact_person: m.contact_person || '',
+            contact_phone: m.contact_phone || '',
+            contact_address: m.contact_address || '',
+            tax_id: m.tax_id || '',
+            email: m.email || '',
+            recovery_password: m.recovery_password || '',
+            status: m.status || 'active'
         });
         setShowEditMerchant(true);
         setOpenDropdown(null);
@@ -137,8 +178,21 @@ const AdminDashboard = () => {
                 </div>
                 <Button
                     onClick={() => {
-                        const randomPassword = Math.floor(100000 + Math.random() * 900000).toString();
-                        setNewMerchant(prev => ({ ...prev, password: randomPassword }));
+                        const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+                        let randomPassword = "";
+                        for (let i = 0; i < 10; i++) {
+                            randomPassword += chars.charAt(Math.floor(Math.random() * chars.length));
+                        }
+                        setNewMerchant({
+                            email: '',
+                            password: randomPassword,
+                            store_name: '',
+                            contact_person: '',
+                            contact_phone: '',
+                            contact_address: '',
+                            tax_id: '',
+                            status: 'active'
+                        });
                         setShowAddMerchant(true);
                     }}
                     className="button-premium h-16 px-10 rounded-2xl text-lg group"
@@ -150,9 +204,9 @@ const AdminDashboard = () => {
 
             {/* Overlays (Dialogs) */}
             {showAddMerchant && (
-                <div className="fixed inset-0 bg-slate-950/60 z-[100] flex items-center justify-center p-6 backdrop-blur-md">
-                    <Card className="bg-white rounded-[2.5rem] p-10 max-w-lg w-full shadow-2xl border-none animate-in zoom-in-95 duration-300">
-                        <div className="flex justify-between items-center mb-10">
+                <div className="fixed inset-0 bg-slate-950/60 z-[100] flex items-center justify-center p-6 backdrop-blur-md overflow-y-auto">
+                    <Card className="bg-white rounded-[2.5rem] p-10 max-w-3xl w-full shadow-2xl border-none animate-in zoom-in-95 duration-300 my-auto">
+                        <div className="flex justify-between items-center mb-8">
                             <h3 className="text-2xl font-black text-slate-900">新增商家帳號</h3>
                             <button onClick={() => setShowAddMerchant(false)} className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-600 transition-colors">
                                 <Plus className="h-6 w-6 rotate-45" />
@@ -160,42 +214,237 @@ const AdminDashboard = () => {
                         </div>
 
                         <form onSubmit={handleCreateMerchant} className="space-y-6">
-                            <div className="space-y-2">
-                                <Label className="text-xs font-black uppercase tracking-widest text-slate-400 ml-1">商店/品牌名稱</Label>
-                                <Input
-                                    type="text"
-                                    required
-                                    className="h-14 rounded-2xl border-transparent bg-slate-50 px-6 py-3 focus:bg-white focus:border-teal-500/30 outline-none transition-all font-bold"
-                                    value={newMerchant.store_name}
-                                    onChange={e => setNewMerchant({ ...newMerchant, store_name: e.target.value })}
-                                    placeholder="例：永心鳳茶"
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label className="text-xs font-black uppercase tracking-widest text-slate-400 ml-1">管理員 Email</Label>
-                                <Input
-                                    type="email"
-                                    required
-                                    className="h-14 rounded-2xl border-transparent bg-slate-50 px-6 py-3 focus:bg-white focus:border-teal-500/30 outline-none transition-all font-bold"
-                                    value={newMerchant.email}
-                                    onChange={e => setNewMerchant({ ...newMerchant, email: e.target.value })}
-                                    placeholder="merchant@example.com"
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label className="text-xs font-black uppercase tracking-widest text-slate-400 ml-1">預設登入密碼</Label>
-                                <Input
-                                    type="text"
-                                    required
-                                    className="h-14 rounded-2xl border-transparent bg-slate-50 px-6 py-3 focus:bg-white focus:border-teal-500/30 outline-none transition-all font-bold font-mono"
-                                    value={newMerchant.password}
-                                    onChange={e => setNewMerchant({ ...newMerchant, password: e.target.value })}
-                                />
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="space-y-2">
+                                    <Label className="text-xs font-black uppercase tracking-widest text-slate-400 ml-1">商店/品牌名稱</Label>
+                                    <Input
+                                        type="text"
+                                        required
+                                        className="h-14 rounded-2xl border-transparent bg-slate-50 px-6 focus:bg-white focus:border-teal-500/30 font-bold"
+                                        value={newMerchant.store_name}
+                                        onChange={e => setNewMerchant({ ...newMerchant, store_name: e.target.value })}
+                                        placeholder="例：永心鳳茶"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-xs font-black uppercase tracking-widest text-slate-400 ml-1">統一編號 (8位數字)</Label>
+                                    <Input
+                                        type="text"
+                                        pattern="[0-9]{8}"
+                                        required
+                                        title="請輸入8位數字統一編號"
+                                        className="h-14 rounded-2xl border-transparent bg-slate-50 px-6 focus:bg-white focus:border-teal-500/30 font-bold"
+                                        value={newMerchant.tax_id}
+                                        onChange={e => setNewMerchant({ ...newMerchant, tax_id: e.target.value.replace(/[^0-9]/g, '').slice(0, 8) })}
+                                        placeholder="12345678"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-xs font-black uppercase tracking-widest text-slate-400 ml-1">聯絡人</Label>
+                                    <Input
+                                        type="text"
+                                        className="h-14 rounded-2xl border-transparent bg-slate-50 px-6 focus:bg-white focus:border-teal-500/30 font-bold"
+                                        value={newMerchant.contact_person}
+                                        onChange={e => setNewMerchant({ ...newMerchant, contact_person: e.target.value })}
+                                        placeholder="王小明"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-xs font-black uppercase tracking-widest text-slate-400 ml-1">聯絡電話</Label>
+                                    <Input
+                                        type="text"
+                                        className="h-14 rounded-2xl border-transparent bg-slate-50 px-6 focus:bg-white focus:border-teal-500/30 font-bold"
+                                        value={newMerchant.contact_phone}
+                                        onChange={e => setNewMerchant({ ...newMerchant, contact_phone: e.target.value })}
+                                        placeholder="0912345678"
+                                    />
+                                </div>
+                                <div className="md:col-span-2 space-y-2">
+                                    <Label className="text-xs font-black uppercase tracking-widest text-slate-400 ml-1">聯絡地址</Label>
+                                    <Input
+                                        type="text"
+                                        className="h-14 rounded-2xl border-transparent bg-slate-50 px-6 focus:bg-white focus:border-teal-500/30 font-bold"
+                                        value={newMerchant.contact_address}
+                                        onChange={e => setNewMerchant({ ...newMerchant, contact_address: e.target.value })}
+                                        placeholder="台北市信義區..."
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-xs font-black uppercase tracking-widest text-slate-400 ml-1">管理員 Email (登入帳號)</Label>
+                                    <Input
+                                        type="email"
+                                        required
+                                        className="h-14 rounded-2xl border-transparent bg-slate-50 px-6 focus:bg-white focus:border-teal-500/30 font-bold"
+                                        value={newMerchant.email}
+                                        onChange={e => setNewMerchant({ ...newMerchant, email: e.target.value })}
+                                        placeholder="merchant@example.com"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-xs font-black uppercase tracking-widest text-slate-400 ml-1">預設登入密碼 (10位)</Label>
+                                    <Input
+                                        type="text"
+                                        required
+                                        className="h-14 rounded-2xl border-transparent bg-slate-50 px-6 focus:bg-white focus:border-teal-500/30 font-bold font-mono"
+                                        value={newMerchant.password}
+                                        onChange={e => setNewMerchant({ ...newMerchant, password: e.target.value })}
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-xs font-black uppercase tracking-widest text-slate-400 ml-1">啟動營運狀態</Label>
+                                    <select
+                                        className="w-full h-14 rounded-2xl border-transparent bg-slate-50 px-6 focus:bg-white focus:border-teal-500/30 font-bold outline-none appearance-none cursor-pointer"
+                                        value={newMerchant.status}
+                                        onChange={e => setNewMerchant({ ...newMerchant, status: e.target.value })}
+                                    >
+                                        <option value="active">🟢 營運中 (Active)</option>
+                                        <option value="inactive">🟡 暫停服務 (Inactive)</option>
+                                        <option value="suspended">🔴 已停權 (Suspended)</option>
+                                    </select>
+                                </div>
                             </div>
 
                             <div className="pt-6 flex gap-4">
                                 <Button type="button" variant="ghost" onClick={() => setShowAddMerchant(false)} className="flex-1 rounded-2xl h-14 font-black text-slate-400">取消</Button>
-                                <Button type="submit" className="flex-1 button-premium rounded-2xl h-14">立即建立</Button>
+                                <Button type="submit" className="flex-1 button-premium rounded-2xl h-14">立即建立商家</Button>
+                            </div>
+                        </form>
+                    </Card>
+                </div>
+            )}
+
+            {showEditMerchant && editingMerchant && (
+                <div className="fixed inset-0 bg-slate-950/60 z-[100] flex items-center justify-center p-6 backdrop-blur-md overflow-y-auto">
+                    <Card className="bg-white rounded-[2.5rem] p-10 max-w-3xl w-full shadow-2xl border-none animate-in zoom-in-95 duration-300 my-auto">
+                        <div className="flex justify-between items-center mb-8">
+                            <h3 className="text-2xl font-black text-slate-900">編輯商家資料</h3>
+                            <button onClick={() => { setShowEditMerchant(false); setEditingMerchant(null); }} className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-600 transition-colors">
+                                <Plus className="h-6 w-6 rotate-45" />
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleUpdateMerchant} className="space-y-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="space-y-2">
+                                    <Label className="text-xs font-black uppercase tracking-widest text-slate-400 ml-1">商店/品牌名稱</Label>
+                                    <Input
+                                        type="text"
+                                        required
+                                        className="h-14 rounded-2xl border-transparent bg-slate-50 px-6 focus:bg-white focus:border-teal-500/30 font-bold"
+                                        value={editingMerchant.store_name}
+                                        onChange={e => setEditingMerchant({ ...editingMerchant, store_name: e.target.value })}
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-xs font-black uppercase tracking-widest text-slate-400 ml-1">統一編號 (8位數字)</Label>
+                                    <Input
+                                        type="text"
+                                        pattern="[0-9]{8}"
+                                        required
+                                        className="h-14 rounded-2xl border-transparent bg-slate-50 px-6 focus:bg-white focus:border-teal-500/30 font-bold"
+                                        value={editingMerchant.tax_id}
+                                        onChange={e => setEditingMerchant({ ...editingMerchant, tax_id: e.target.value.replace(/[^0-9]/g, '').slice(0, 8) })}
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-xs font-black uppercase tracking-widest text-slate-400 ml-1">聯絡人</Label>
+                                    <Input
+                                        type="text"
+                                        className="h-14 rounded-2xl border-transparent bg-slate-50 px-6 focus:bg-white focus:border-teal-500/30 font-bold"
+                                        value={editingMerchant.contact_person}
+                                        onChange={e => setEditingMerchant({ ...editingMerchant, contact_person: e.target.value })}
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-xs font-black uppercase tracking-widest text-slate-400 ml-1">聯絡電話</Label>
+                                    <Input
+                                        type="text"
+                                        className="h-14 rounded-2xl border-transparent bg-slate-50 px-6 focus:bg-white focus:border-teal-500/30 font-bold"
+                                        value={editingMerchant.contact_phone}
+                                        onChange={e => setEditingMerchant({ ...editingMerchant, contact_phone: e.target.value })}
+                                    />
+                                </div>
+                                <div className="md:col-span-2 space-y-2">
+                                    <Label className="text-xs font-black uppercase tracking-widest text-slate-400 ml-1">聯絡地址</Label>
+                                    <Input
+                                        type="text"
+                                        className="h-14 rounded-2xl border-transparent bg-slate-50 px-6 focus:bg-white focus:border-teal-500/30 font-bold"
+                                        value={editingMerchant.contact_address}
+                                        onChange={e => setEditingMerchant({ ...editingMerchant, contact_address: e.target.value })}
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-xs font-black uppercase tracking-widest text-slate-400 ml-1">修改營運狀態</Label>
+                                    <select
+                                        className="w-full h-14 rounded-2xl border-transparent bg-slate-50 px-6 focus:bg-white focus:border-teal-500/30 font-bold outline-none appearance-none cursor-pointer border-2 border-slate-100"
+                                        value={editingMerchant.status}
+                                        onChange={e => setEditingMerchant({ ...editingMerchant, status: e.target.value })}
+                                    >
+                                        <option value="active">🟢 營運中 (Active)</option>
+                                        <option value="inactive">🟡 暫停服務 (Inactive)</option>
+                                        <option value="suspended">🔴 已停權 (Suspended)</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div className="bg-slate-50 p-6 rounded-[2rem] border border-slate-100 space-y-4">
+                                <div className="flex items-center gap-2 mb-2">
+                                    <ShieldCheck className="w-5 h-5 text-teal-600" />
+                                    <h4 className="text-sm font-black text-slate-900 uppercase tracking-widest">救援登入帳密 (管理員專用)</h4>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">登入帳號 EMAIL</Label>
+                                        <div className="relative group">
+                                            <Input
+                                                readOnly
+                                                className="h-12 rounded-xl border-dashed border-2 border-slate-200 bg-white px-4 font-bold text-slate-600 cursor-default"
+                                                value={editingMerchant.email || '未記錄'}
+                                            />
+                                            <Button
+                                                type="button"
+                                                variant="ghost"
+                                                onClick={() => {
+                                                    navigator.clipboard.writeText(editingMerchant.email);
+                                                    alert("帳號已複製！");
+                                                }}
+                                                className="absolute right-1 top-1/2 -translate-y-1/2 h-10 w-10 p-0 rounded-lg hover:bg-slate-100 text-slate-400 active:scale-95"
+                                            >
+                                                <Copy className="h-4 w-4" />
+                                            </Button>
+                                        </div>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">系統初設密碼</Label>
+                                        <div className="relative group">
+                                            <Input
+                                                readOnly
+                                                className="h-12 rounded-xl border-dashed border-2 border-slate-200 bg-white px-4 font-bold font-mono text-slate-600 cursor-default"
+                                                value={editingMerchant.recovery_password || '未記錄'}
+                                            />
+                                            <Button
+                                                type="button"
+                                                variant="ghost"
+                                                onClick={() => {
+                                                    navigator.clipboard.writeText(editingMerchant.recovery_password);
+                                                    alert("密碼已複製！");
+                                                }}
+                                                className="absolute right-1 top-1/2 -translate-y-1/2 h-10 w-10 p-0 rounded-lg hover:bg-slate-100 text-slate-400 active:scale-95"
+                                            >
+                                                <Copy className="h-4 w-4" />
+                                            </Button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <p className="text-[10px] font-bold text-amber-500 flex items-center gap-1">
+                                    <span className="text-sm">⚠️</span>
+                                    僅供協助商家找回帳號。若商家已於後台自行修改密碼，此處顯示之密碼將失效。
+                                </p>
+                            </div>
+
+                            <div className="pt-6 flex gap-4">
+                                <Button type="button" variant="ghost" onClick={() => { setShowEditMerchant(false); setEditingMerchant(null); }} className="flex-1 rounded-2xl h-14 font-black text-slate-400">取消</Button>
+                                <Button type="submit" className="flex-1 button-premium rounded-2xl h-14">儲存變更</Button>
                             </div>
                         </form>
                     </Card>
@@ -224,8 +473,8 @@ const AdminDashboard = () => {
                         <table className="w-full text-left">
                             <thead className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] bg-slate-50/50 border-b border-slate-50">
                                 <tr>
-                                    <th className="px-10 py-6">品牌商家名稱</th>
-                                    <th className="px-10 py-6">系統識別 ID</th>
+                                    <th className="px-10 py-6">品牌商家名稱 / 統編</th>
+                                    <th className="px-10 py-6">聯絡資訊</th>
                                     <th className="px-10 py-6">建立時間</th>
                                     <th className="px-10 py-6">運營狀態</th>
                                     <th className="px-10 py-6 text-right">管理操作</th>
@@ -246,20 +495,41 @@ const AdminDashboard = () => {
                                                 <div className="font-black text-xl text-slate-900 group-hover:text-teal-700 transition-colors">
                                                     {(merchant.merchants && merchant.merchants.store_name) || "未命名品牌"}
                                                 </div>
+                                                <div className="text-slate-400 font-mono text-xs mt-1">
+                                                    統編: {(merchant.merchants && merchant.merchants.tax_id) || "未設定"}
+                                                </div>
                                             </td>
                                             <td className="px-10 py-8">
-                                                <div className="text-slate-400 font-mono text-xs flex items-center group-hover:text-slate-600 transition-colors">
-                                                    {merchant.id.slice(0, 12)}...
+                                                <div className="flex flex-col gap-1">
+                                                    <div className="text-sm font-bold text-slate-700 flex items-center gap-2">
+                                                        <User className="w-3 h-3 text-slate-400" />
+                                                        {(merchant.merchants && merchant.merchants.contact_person) || "無聯絡人"}
+                                                    </div>
+                                                    <div className="text-xs text-slate-500 flex items-center gap-2">
+                                                        <Phone className="w-3 h-3 text-slate-400" />
+                                                        {(merchant.merchants && merchant.merchants.contact_phone) || "無電話"}
+                                                    </div>
                                                 </div>
                                             </td>
                                             <td className="px-10 py-8 text-slate-500 font-bold text-sm">
                                                 {new Date(merchant.created_at).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}
                                             </td>
                                             <td className="px-10 py-8">
-                                                <span className="inline-flex items-center px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest bg-emerald-100 text-emerald-700 shadow-sm shadow-emerald-700/5">
-                                                    <span className="w-2 h-2 rounded-full bg-emerald-500 mr-2 animate-pulse" />
-                                                    Active
-                                                </span>
+                                                {(() => {
+                                                    const status = (merchant.merchants && merchant.merchants.status) || 'active';
+                                                    const configs = {
+                                                        active: { label: 'Active', bg: 'bg-emerald-100', text: 'text-emerald-700', dot: 'bg-emerald-500' },
+                                                        inactive: { label: 'Inactive', bg: 'bg-amber-100', text: 'text-amber-700', dot: 'bg-amber-500' },
+                                                        suspended: { label: 'Suspended', bg: 'bg-red-100', text: 'text-red-700', dot: 'bg-red-500' }
+                                                    };
+                                                    const config = configs[status] || configs.active;
+                                                    return (
+                                                        <span className={cn("inline-flex items-center px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-sm", config.bg, config.text)}>
+                                                            <span className={cn("w-2 h-2 rounded-full mr-2", config.dot, status === 'active' && "animate-pulse")} />
+                                                            {config.label}
+                                                        </span>
+                                                    );
+                                                })()}
                                             </td>
                                             <td className="px-10 py-8 text-right relative">
                                                 <button

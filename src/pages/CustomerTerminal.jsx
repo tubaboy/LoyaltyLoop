@@ -15,10 +15,12 @@ export default function CustomerTerminal({ onLogout }) {
     const [isLoading, setIsLoading] = useState(false);
     const [options, setOptions] = useState([]); // Dynamic Add/Redeem presets
     const [terminalInfo, setTerminalInfo] = useState({ store_name: '', branch_name: '' });
+    const [redemptionCount, setRedemptionCount] = useState(0);
 
     // Custom Points State
     const [showCustomInput, setShowCustomInput] = useState(false);
     const [customAmount, setCustomAmount] = useState('');
+    const [customMode, setCustomMode] = useState('add'); // 'add' | 'deduct'
     const [isFullscreen, setIsFullscreen] = useState(false);
 
     const toggleFullscreen = () => {
@@ -87,13 +89,15 @@ export default function CustomerTerminal({ onLogout }) {
 
         setIsLoading(true);
         try {
-            // Fetch points and loyalty options in parallel
-            const [p, opt] = await Promise.all([
+            // Fetch points, loyalty options, and daily redemption count in parallel
+            const [p, opt, count] = await Promise.all([
                 store.getPoints(phone),
-                store.getLoyaltyOptions()
+                store.getLoyaltyOptions(),
+                store.getRedemptionCountToday(phone)
             ]);
             setPoints(p);
             setOptions(opt);
+            setRedemptionCount(count);
             setView('action');
         } catch (error) {
             console.error(error);
@@ -111,6 +115,7 @@ export default function CustomerTerminal({ onLogout }) {
         setMessage('');
         setShowCustomInput(false);
         setCustomAmount('');
+        setCustomMode('add');
         setView('search');
     };
 
@@ -133,21 +138,26 @@ export default function CustomerTerminal({ onLogout }) {
         }
     };
 
-    const handleRedeem = async (cost) => {
+    const handleRedeem = async (cost, isManual = false) => {
         cancelAutoReset();
         setIsLoading(true);
         try {
-            const success = await store.redeemPoints(phone, cost);
+            const success = await store.redeemPoints(phone, cost, isManual);
             if (success !== false) {
                 setPoints(success);
-                setMessage(`Redeemed ${cost} points! 🎁 (Resetting in 10s...)`);
+                if (!isManual) setRedemptionCount(prev => prev + 1);
+                setMessage(`${isManual ? '扣除' : '兌換'} ${cost} 點! ${isManual ? '🔧' : '🎁'} (Resetting in 10s...)`);
                 startAutoReset();
             } else {
-                setMessage('Insufficient points! ⚠️');
+                setMessage('點數不足! ⚠️');
             }
         } catch (error) {
-            console.error(error);
-            setMessage('Redemption error. ❌');
+            if (error.message === 'Limit reached') {
+                setMessage('今日兌換次數已達上限 2 次 ⚠️');
+            } else {
+                console.error(error);
+                setMessage('Redemption error. ❌');
+            }
         } finally {
             setIsLoading(false);
         }
@@ -170,9 +180,19 @@ export default function CustomerTerminal({ onLogout }) {
     const handleCustomSubmit = async () => {
         const amt = parseInt(customAmount, 10);
         if (amt > 0) {
-            await handleAddPoint(amt);
+            if (customMode === 'add') {
+                await handleAddPoint(amt);
+            } else {
+                if (amt > points) {
+                    setMessage('扣除點數不能超過顧客持有點數! ⚠️');
+                    setTimeout(() => setMessage(''), 5000);
+                    return;
+                }
+                await handleRedeem(amt, true);
+            }
             setShowCustomInput(false);
             setCustomAmount('');
+            setCustomMode('add');
         }
     };
 
@@ -418,36 +438,58 @@ export default function CustomerTerminal({ onLogout }) {
                                 <div className="h-px bg-slate-200 shrink-0" />
 
                                 {/* Redeem Rewards Section - Flexible height scrolling */}
-                                <div className="flex-1 flex flex-col gap-4 min-h-0">
+                                <div className="flex-1 flex flex-col gap-4 min-h-0 relative">
                                     <div className="flex items-center gap-4 shrink-0 sticky top-0 bg-slate-50 z-10 py-1">
                                         <div className="w-12 h-12 bg-indigo-100 text-indigo-600 rounded-2xl flex items-center justify-center font-black text-2xl shadow-sm">★</div>
                                         <h3 className="text-2xl lg:text-3xl font-black text-slate-900">兌換獎勵</h3>
+                                        {redemptionCount > 0 && redemptionCount < 2 && (
+                                            <div className="ml-auto bg-indigo-50 text-indigo-600 px-3 py-1 rounded-full text-xs font-black border border-indigo-100">
+                                                今日已兌換 {redemptionCount}/2 次
+                                            </div>
+                                        )}
                                     </div>
-                                    <div className="grid grid-cols-2 gap-3 overflow-y-auto pr-2 pb-4 content-start">
-                                        {options.filter(o => o.type === 'redeem').map(opt => (
-                                            <Button
-                                                key={opt.id}
-                                                disabled={isLoading || points < opt.value}
-                                                onClick={() => handleRedeem(opt.value)}
-                                                className={cn(
-                                                    "h-24 rounded-[1.5rem] flex justify-between items-center px-5 border-2 transition-all duration-300 active:scale-95 group",
-                                                    points >= opt.value
-                                                        ? "bg-white border-slate-100 hover:border-indigo-500 hover:bg-indigo-50 text-slate-900 shadow-soft-md hover:shadow-xl"
-                                                        : "bg-slate-50 border-transparent text-slate-300 grayscale opacity-50 cursor-not-allowed shadow-none"
-                                                )}
-                                            >
-                                                <div className="flex flex-col items-start gap-0 max-w-[60%] overflow-hidden">
-                                                    <span className="text-lg font-black truncate w-full text-left">{opt.label}</span>
-                                                    <span className="text-xs font-bold text-slate-400">消耗 {opt.value} 點</span>
+
+                                    <div className="relative flex-1 min-h-0">
+                                        {redemptionCount >= 2 && (
+                                            <div className="absolute inset-0 z-20 bg-white/40 backdrop-blur-md rounded-[2.5rem] flex flex-col items-center justify-center p-6 text-center animate-in fade-in duration-500 border-2 border-dashed border-amber-200/50">
+                                                <div className="w-20 h-20 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center text-4xl mb-4 shadow-lg shadow-amber-200/50">⚠️</div>
+                                                <h4 className="text-2xl font-black text-slate-900 mb-2">兌換額度已達上限</h4>
+                                                <p className="text-slate-500 font-bold">同顧客於本分店每日限兌換 2 次</p>
+                                                <div className="mt-6 px-6 py-2 bg-gradient-to-r from-amber-500 to-orange-600 text-white rounded-full font-black text-sm uppercase tracking-widest shadow-xl">
+                                                    請明天再試 Tomorrow
                                                 </div>
-                                                <div className={cn(
-                                                    "w-10 h-10 rounded-full flex items-center justify-center font-black text-xs shrink-0 transition-colors",
-                                                    points >= opt.value ? "bg-indigo-600 text-white group-hover:bg-indigo-500" : "bg-slate-200 text-slate-400"
-                                                )}>
-                                                    兌換
-                                                </div>
-                                            </Button>
-                                        ))}
+                                            </div>
+                                        )}
+
+                                        <div className={cn(
+                                            "grid grid-cols-2 gap-3 overflow-y-auto h-full pr-2 pb-4 content-start transition-all duration-500",
+                                            redemptionCount >= 2 && "opacity-20 grayscale pointer-events-none blur-[2px]"
+                                        )}>
+                                            {options.filter(o => o.type === 'redeem').map(opt => (
+                                                <Button
+                                                    key={opt.id}
+                                                    disabled={isLoading || points < opt.value || redemptionCount >= 2}
+                                                    onClick={() => handleRedeem(opt.value)}
+                                                    className={cn(
+                                                        "h-24 rounded-[1.5rem] flex justify-between items-center px-5 border-2 transition-all duration-300 active:scale-95 group",
+                                                        points >= opt.value && redemptionCount < 2
+                                                            ? "bg-white border-slate-100 hover:border-indigo-500 hover:bg-indigo-50 text-slate-900 shadow-soft-md hover:shadow-xl"
+                                                            : "bg-slate-50 border-transparent text-slate-300 grayscale opacity-50 cursor-not-allowed shadow-none"
+                                                    )}
+                                                >
+                                                    <div className="flex flex-col items-start gap-0 max-w-[60%] overflow-hidden">
+                                                        <span className="text-lg font-black truncate w-full text-left">{opt.label}</span>
+                                                        <span className="text-xs font-bold text-slate-400">消耗 {opt.value} 點</span>
+                                                    </div>
+                                                    <div className={cn(
+                                                        "w-10 h-10 rounded-full flex items-center justify-center font-black text-xs shrink-0 transition-colors",
+                                                        points >= opt.value && redemptionCount < 2 ? "bg-indigo-600 text-white group-hover:bg-indigo-500" : "bg-slate-200 text-slate-400"
+                                                    )}>
+                                                        兌換
+                                                    </div>
+                                                </Button>
+                                            ))}
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -467,15 +509,43 @@ export default function CustomerTerminal({ onLogout }) {
                                 <div className="flex flex-col gap-6 md:gap-8 justify-center">
                                     <div className="flex justify-between items-start md:block">
                                         <div>
-                                            <h3 className="text-2xl md:text-4xl font-black text-slate-900 leading-tight">自訂累積點數</h3>
-                                            <p className="text-slate-400 font-medium mt-1 md:mt-2 md:text-lg">請輸入要手動增加的點數值</p>
+                                            <h3 className="text-2xl md:text-4xl font-black text-slate-900 leading-tight">自訂累積扣除點數</h3>
+                                            <p className="text-slate-400 font-medium mt-1 md:mt-2 md:text-lg">請輸入要手動增加/扣除的點數值</p>
                                         </div>
                                         <Button variant="ghost" className="md:hidden rounded-full w-10 h-10 p-0" onClick={() => setShowCustomInput(false)}>
                                             <X className="h-5 w-5" />
                                         </Button>
                                     </div>
 
-                                    <div className="bg-slate-50 rounded-3xl h-24 md:h-48 flex items-center justify-center text-6xl md:text-8xl font-black text-teal-600 shadow-inner">
+                                    {/* Mode Toggle */}
+                                    <div className="flex p-1 bg-slate-100 rounded-2xl">
+                                        <Button
+                                            variant="ghost"
+                                            onClick={() => setCustomMode('add')}
+                                            className={cn(
+                                                "flex-1 h-12 rounded-xl text-lg font-black transition-all",
+                                                customMode === 'add' ? "bg-white text-teal-600 shadow-sm" : "text-slate-400 hover:text-slate-600"
+                                            )}
+                                        >
+                                            ➕ 增加點數
+                                        </Button>
+                                        <Button
+                                            variant="ghost"
+                                            onClick={() => setCustomMode('deduct')}
+                                            className={cn(
+                                                "flex-1 h-12 rounded-xl text-lg font-black transition-all",
+                                                customMode === 'deduct' ? "bg-white text-red-600 shadow-sm" : "text-slate-400 hover:text-slate-600"
+                                            )}
+                                        >
+                                            ➖ 扣除點數
+                                        </Button>
+                                    </div>
+
+                                    <div className={cn(
+                                        "rounded-3xl h-24 md:h-48 flex items-center justify-center text-6xl md:text-8xl font-black shadow-inner transition-colors",
+                                        customMode === 'add' ? "bg-teal-50 text-teal-600" : "bg-red-50 text-red-600"
+                                    )}>
+                                        <span className="opacity-40 mr-2 md:mr-4">{customMode === 'add' ? '+' : '-'}</span>
                                         {customAmount || '0'}
                                     </div>
 

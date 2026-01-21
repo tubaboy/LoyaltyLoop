@@ -172,11 +172,56 @@ export const store = {
         return customer.points;
     },
 
-    // Redeem points
-    redeemPoints: async (phone, amount) => {
+    // Get redemption count for today (current branch)
+    getRedemptionCountToday: async (phone) => {
         const merchantId = await store.getMerchantId();
         const terminalSession = store.getTerminalSession();
         const branchId = (terminalSession && terminalSession.branch_id) || null;
+
+        if (!branchId) return 0; // If no branch, we can't check branch-specific limit
+
+        // 1. Get Customer ID
+        const { data: customer, error: fetchError } = await supabase
+            .from('customers')
+            .select('id')
+            .eq('merchant_id', merchantId)
+            .eq('phone', phone)
+            .maybeSingle();
+
+        if (fetchError || !customer) return 0;
+
+        // 2. Query transactions for today
+        const todayStart = new Date();
+        todayStart.setHours(0, 0, 0, 0);
+        const todayEnd = new Date();
+        todayEnd.setHours(23, 59, 59, 999);
+
+        const { count, error: countError } = await supabase
+            .from('transactions')
+            .select('*', { count: 'exact', head: true })
+            .eq('customer_id', customer.id)
+            .eq('branch_id', branchId)
+            .eq('type', 'redeem')
+            .gte('created_at', todayStart.toISOString())
+            .lte('created_at', todayEnd.toISOString());
+
+        if (countError) throw countError;
+        return count || 0;
+    },
+
+    // Redeem points
+    redeemPoints: async (phone, amount, isManual = false) => {
+        const merchantId = await store.getMerchantId();
+        const terminalSession = store.getTerminalSession();
+        const branchId = (terminalSession && terminalSession.branch_id) || null;
+
+        // 0. Check Daily Limit (Only if not manual)
+        if (!isManual) {
+            const dailyCount = await store.getRedemptionCountToday(phone);
+            if (dailyCount >= 2) {
+                throw new Error('Limit reached');
+            }
+        }
 
         // 1. Get Customer
         const { data: customer, error: fetchError } = await supabase
@@ -203,7 +248,7 @@ export const store = {
         await supabase.from('transactions').insert([{
             merchant_id: merchantId,
             customer_id: customer.id,
-            type: 'redeem',
+            type: isManual ? 'manual_redeem' : 'redeem',
             amount: amount,
             branch_id: branchId
         }]);
