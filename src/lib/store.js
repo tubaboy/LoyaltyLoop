@@ -212,14 +212,27 @@ export const store = {
     },
 
     // Fetch dynamic options (Presets)
-    getLoyaltyOptions: async () => {
+    getLoyaltyOptions: async (branchId = null) => {
         const merchantId = await store.getMerchantId();
+        const terminalSession = store.getTerminalSession();
+        const activeBranchId = branchId || (terminalSession && terminalSession.branch_id);
 
-        const { data, error } = await supabase
+        let query = supabase
             .from('loyalty_options')
             .select('*')
             .eq('merchant_id', merchantId)
-            .eq('is_active', true)
+            .eq('is_active', true);
+
+        if (activeBranchId) {
+            query = query.eq('branch_id', activeBranchId);
+        } else {
+            // If No branchId provided and no terminal session, 
+            // we return options where branch_id is null (merchant-wide) 
+            // OR we could return empty. Let's return where branch_id is null for legacy support.
+            query = query.is('branch_id', null);
+        }
+
+        const { data, error } = await query
             .order('display_order', { ascending: true });
 
         if (error) throw error;

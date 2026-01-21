@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { supabase } from '../../lib/supabase';
 import { store } from '../../lib/store';
-import { MapPin, Plus, Trash2, Edit2, Phone, Key, Store, ArrowRight, RefreshCw } from 'lucide-react';
+import { MapPin, Plus, Trash2, Edit2, Phone, Key, Store, ArrowRight, RefreshCw, Copy } from 'lucide-react';
 import { cn } from "@/lib/utils";
 
 const BranchManagement = () => {
@@ -15,7 +15,7 @@ const BranchManagement = () => {
     const [editingId, setEditingId] = useState(null);
 
     // Form state
-    const [formData, setFormData] = useState({ name: '', address: '', phone: '', login_key: '' });
+    const [formData, setFormData] = useState({ name: '', address: '', phone: '', login_key: '', is_active: true });
 
     useEffect(() => {
         fetchBranches();
@@ -49,7 +49,7 @@ const BranchManagement = () => {
             }
             setIsAdding(false);
             setEditingId(null);
-            setFormData({ name: '', address: '', phone: '', login_key: '' });
+            setFormData({ name: '', address: '', phone: '', login_key: '', is_active: true });
             fetchBranches();
         } catch (err) {
             alert('儲存失敗');
@@ -60,6 +60,30 @@ const BranchManagement = () => {
         if (!confirm('確定要刪除此分店嗎？這可能會影響相關交易紀錄。')) return;
         await supabase.from('branches').delete().eq('id', id);
         fetchBranches();
+    };
+
+    const handleCopy = async (branch) => {
+        try {
+            const merchantId = await store.getMerchantId();
+            const randomKey = Math.floor(10000000 + Math.random() * 90000000).toString();
+
+            const newBranchData = {
+                name: `${branch.name} - 副本`,
+                address: branch.address,
+                phone: branch.phone,
+                login_key: randomKey,
+                is_active: branch.is_active ?? true,
+                merchant_id: merchantId
+            };
+
+            const { error } = await supabase.from('branches').insert([newBranchData]);
+            if (error) throw error;
+
+            fetchBranches();
+        } catch (err) {
+            console.error(err);
+            alert('複製分店失敗');
+        }
     };
 
     return (
@@ -143,6 +167,17 @@ const BranchManagement = () => {
                                     </Button>
                                 </div>
                             </div>
+                            <div className="space-y-3">
+                                <Label className="font-black text-slate-900 ml-1 uppercase text-xs tracking-widest">分店狀態</Label>
+                                <select
+                                    value={formData.is_active}
+                                    onChange={e => setFormData({ ...formData, is_active: e.target.value === 'true' })}
+                                    className="w-full h-14 rounded-2xl bg-slate-50 border-transparent focus:bg-white focus:ring-0 focus:border-teal-500/30 transition-all font-bold px-5 appearance-none cursor-pointer"
+                                >
+                                    <option value="true">正常營運</option>
+                                    <option value="false">暫停營運</option>
+                                </select>
+                            </div>
                         </div>
                         <div className="flex justify-end gap-4 mt-12 pt-8 border-t border-slate-50">
                             <Button variant="ghost" onClick={() => { setIsAdding(false); setEditingId(null); }} className="h-14 px-8 rounded-2xl font-bold text-slate-400">放棄修改</Button>
@@ -177,6 +212,7 @@ const BranchManagement = () => {
                                 <Store className="h-7 w-7" />
                             </div>
                             <div className="flex gap-2">
+                                <Button variant="ghost" size="icon" onClick={() => handleCopy(branch)} title="複製分店" className="h-10 w-10 rounded-xl text-slate-300 hover:text-blue-500 hover:bg-blue-50 transition-all"><Copy className="h-5 w-5" /></Button>
                                 <Button variant="ghost" size="icon" onClick={() => { setEditingId(branch.id); setFormData(branch); }} className="h-10 w-10 rounded-xl text-slate-300 hover:text-teal-600 hover:bg-teal-50 transition-all"><Edit2 className="h-5 w-5" /></Button>
                                 <Button variant="ghost" size="icon" onClick={() => handleDelete(branch.id)} className="h-10 w-10 rounded-xl text-slate-300 hover:text-red-500 hover:bg-red-50 transition-all"><Trash2 className="h-5 w-5" /></Button>
                             </div>
@@ -204,8 +240,13 @@ const BranchManagement = () => {
                                         {branch.login_key || '••••••••'}
                                     </span>
                                 </div>
-                                <div className="bg-teal-50 px-4 py-2 rounded-xl text-teal-700 text-xs font-black uppercase tracking-widest">
-                                    正常運作
+                                <div className={cn(
+                                    "px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-colors",
+                                    branch.is_active !== false
+                                        ? "bg-emerald-50 text-emerald-700"
+                                        : "bg-rose-50 text-rose-700"
+                                )}>
+                                    {branch.is_active !== false ? '正常營運' : '暫停營運'}
                                 </div>
                             </div>
                         </div>
