@@ -14,6 +14,7 @@ export default function CustomerTerminal({ onLogout }) {
     const [message, setMessage] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [options, setOptions] = useState([]); // Dynamic Add/Redeem presets
+    const [terminalInfo, setTerminalInfo] = useState({ store_name: '', branch_name: '' });
 
     // Custom Points State
     const [showCustomInput, setShowCustomInput] = useState(false);
@@ -39,6 +40,14 @@ export default function CustomerTerminal({ onLogout }) {
 
     // Clear timer when unmounting or changing views intentionally
     useEffect(() => {
+        const session = store.getTerminalSession();
+        if (session) {
+            setTerminalInfo({
+                store_name: session.store_name,
+                branch_name: session.branch_name
+            });
+        }
+
         return () => {
             if (resetTimerRef.current) clearTimeout(resetTimerRef.current);
         };
@@ -228,14 +237,21 @@ export default function CustomerTerminal({ onLogout }) {
                                         </div>
 
                                         {/* Status Indicator */}
-                                        <div className="flex items-center gap-3 text-slate-400 font-bold">
-                                            <div className={cn(
-                                                "w-3 h-3 rounded-full transition-all duration-300",
-                                                phone.length === 10 ? "bg-teal-500 animate-pulse shadow-lg shadow-teal-500/50" : "bg-slate-200"
-                                            )} />
-                                            <span className="text-sm uppercase tracking-widest">
-                                                {phone.length === 10 ? '已就緒 - 可查詢' : `已輸入 ${phone.length}/10 位數字`}
-                                            </span>
+                                        <div className="space-y-2">
+                                            {terminalInfo.store_name && (
+                                                <div className="text-[10px] font-black text-teal-600/60 uppercase tracking-[0.2em] ml-1">
+                                                    {terminalInfo.store_name} - {terminalInfo.branch_name}
+                                                </div>
+                                            )}
+                                            <div className="flex items-center gap-3 text-slate-400 font-bold">
+                                                <div className={cn(
+                                                    "w-3 h-3 rounded-full transition-all duration-300",
+                                                    phone.length === 10 ? "bg-teal-500 animate-pulse shadow-lg shadow-teal-500/50" : "bg-slate-200"
+                                                )} />
+                                                <span className="text-sm uppercase tracking-widest">
+                                                    {phone.length === 10 ? '已就緒 - 可查詢' : `已輸入 ${phone.length}/10 位數字`}
+                                                </span>
+                                            </div>
                                         </div>
                                     </div>
 
