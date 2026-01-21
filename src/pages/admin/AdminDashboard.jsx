@@ -11,6 +11,7 @@ import { Plus, Search, MoreHorizontal, UserCheck, ExternalLink, RefreshCw, Trash
 const AdminDashboard = () => {
     const [merchants, setMerchants] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [searchTerm, setSearchTerm] = useState('');
 
     const [showAddMerchant, setShowAddMerchant] = useState(false);
     const [newMerchant, setNewMerchant] = useState({
@@ -50,7 +51,8 @@ const AdminDashboard = () => {
                     tax_id,
                     email,
                     recovery_password,
-                    status
+                    status,
+                    store_code
                 )
             `)
                 .eq('role', 'merchant')
@@ -68,52 +70,47 @@ const AdminDashboard = () => {
     const handleCreateMerchant = async (e) => {
         e.preventDefault();
         try {
-            const { data: authData, error: authError } = await supabase.auth.signUp({
-                email: newMerchant.email,
-                password: newMerchant.password,
-                options: {
-                    data: {
-                        role: 'merchant'
-                    }
-                }
-            });
-
-            if (authError) throw authError;
-            if (!authData.user) throw new Error("No user created");
-
-            const userId = authData.user.id;
-            const isAutoSignedIn = authData.session !== null;
-
-            // Update merchant details (the 'handle_new_user' trigger already created the base record)
-            await supabase
-                .from('merchants')
-                .upsert({
-                    id: userId,
+            setLoading(true);
+            const { data, error } = await supabase.functions.invoke('admin-create-merchant', {
+                body: {
+                    email: newMerchant.email,
+                    password: newMerchant.password,
                     store_name: newMerchant.store_name,
                     contact_person: newMerchant.contact_person,
                     contact_phone: newMerchant.contact_phone,
                     contact_address: newMerchant.contact_address,
                     tax_id: newMerchant.tax_id,
-                    email: newMerchant.email,
-                    recovery_password: newMerchant.password,
                     status: newMerchant.status
-                });
+                }
+            });
 
-            alert("商家帳號建立成功！");
-
-            if (isAutoSignedIn) {
-                alert("建立帳號後系統已自動切換為新帳號，請重新登入管理員帳號。");
-                await supabase.auth.signOut();
-                window.location.reload();
-            } else {
-                setShowAddMerchant(false);
-                setNewMerchant({ email: '', password: '', store_name: '' });
-                fetchMerchants();
+            if (error) {
+                // Try to extract body from the error if possible
+                const body = error.context?.body;
+                const message = body?.error || error.message;
+                throw new Error(message);
             }
+            if (data?.error) throw new Error(data.error);
+
+            alert("商家帳號建立成功！(已跳過 Email 驗證)");
+            setShowAddMerchant(false);
+            setNewMerchant({
+                email: '',
+                password: '',
+                store_name: '',
+                contact_person: '',
+                contact_phone: '',
+                contact_address: '',
+                tax_id: '',
+                status: 'active'
+            });
+            fetchMerchants();
 
         } catch (error) {
             console.error("Error creating merchant:", error);
             alert("建立失敗: " + error.message);
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -162,6 +159,19 @@ const AdminDashboard = () => {
         setShowEditMerchant(true);
         setOpenDropdown(null);
     };
+
+    const filteredMerchants = merchants.filter(merchant => {
+        const m = merchant.merchants || {};
+        const searchLower = searchTerm.toLowerCase().trim();
+        if (!searchLower) return true;
+
+        return (
+            (m.store_name || "").toLowerCase().includes(searchLower) ||
+            (m.email || "").toLowerCase().includes(searchLower) ||
+            (m.tax_id || "").toLowerCase().includes(searchLower) ||
+            merchant.id.toLowerCase().includes(searchLower)
+        );
+    });
 
     return (
         <div className="space-y-10 animate-in fade-in duration-700">
@@ -464,6 +474,8 @@ const AdminDashboard = () => {
                                 type="text"
                                 placeholder="搜尋品牌、Email 或 ID..."
                                 className="w-full rounded-2xl border-transparent bg-white shadow-soft-sm pl-12 pr-6 py-4 text-sm font-bold outline-none focus:ring-2 focus:ring-teal-500/20 transition-all border border-slate-100"
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
                             />
                         </div>
                     </div>
@@ -473,7 +485,7 @@ const AdminDashboard = () => {
                         <table className="w-full text-left">
                             <thead className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] bg-slate-50/50 border-b border-slate-50">
                                 <tr>
-                                    <th className="px-10 py-6">品牌商家名稱 / 統編</th>
+                                    <th className="px-10 py-6">品牌商家名稱 / 統編 / 代碼</th>
                                     <th className="px-10 py-6">聯絡資訊</th>
                                     <th className="px-10 py-6">建立時間</th>
                                     <th className="px-10 py-6">運營狀態</th>
@@ -486,17 +498,20 @@ const AdminDashboard = () => {
                                         <RefreshCw className="w-10 h-10 text-teal-600/20 animate-spin mx-auto mb-4" />
                                         <p className="text-slate-400 font-bold uppercase tracking-widest text-xs">同步核心資料中...</p>
                                     </td></tr>
-                                ) : merchants.length === 0 ? (
-                                    <tr><td colSpan="5" className="px-10 py-32 text-center text-slate-400 font-black uppercase tracking-widest">目前尚無商家資料</td></tr>
+                                ) : filteredMerchants.length === 0 ? (
+                                    <tr><td colSpan="5" className="px-10 py-32 text-center text-slate-400 font-black uppercase tracking-widest">
+                                        {searchTerm ? `查無此商家: "${searchTerm}"` : "目前尚無商家資料"}
+                                    </td></tr>
                                 ) : (
-                                    merchants.map((merchant) => (
+                                    filteredMerchants.map((merchant) => (
                                         <tr key={merchant.id} className="hover:bg-slate-50/80 transition-all duration-300 group">
                                             <td className="px-10 py-8">
                                                 <div className="font-black text-xl text-slate-900 group-hover:text-teal-700 transition-colors">
                                                     {(merchant.merchants && merchant.merchants.store_name) || "未命名品牌"}
                                                 </div>
-                                                <div className="text-slate-400 font-mono text-xs mt-1">
-                                                    統編: {(merchant.merchants && merchant.merchants.tax_id) || "未設定"}
+                                                <div className="text-slate-400 font-mono text-xs mt-1 flex gap-3">
+                                                    <span>統編: {(merchant.merchants && merchant.merchants.tax_id) || "未設定"}</span>
+                                                    <span className="text-teal-600 font-black px-1.5 py-0.5 bg-teal-50 rounded">代碼: {(merchant.merchants && merchant.merchants.store_code) || "----"}</span>
                                                 </div>
                                             </td>
                                             <td className="px-10 py-8">

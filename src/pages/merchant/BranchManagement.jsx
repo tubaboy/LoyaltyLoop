@@ -13,6 +13,7 @@ const BranchManagement = () => {
     const [loading, setLoading] = useState(true);
     const [isAdding, setIsAdding] = useState(false);
     const [editingId, setEditingId] = useState(null);
+    const [storeCode, setStoreCode] = useState('----');
 
     // Form state
     const [formData, setFormData] = useState({ name: '', address: '', phone: '', login_key: '', is_active: true });
@@ -25,6 +26,16 @@ const BranchManagement = () => {
         try {
             setLoading(true);
             const merchantId = await store.getMerchantId();
+
+            // Fetch merchant store_code
+            const { data: merchantData } = await supabase
+                .from('merchants')
+                .select('store_code')
+                .eq('id', merchantId)
+                .single();
+
+            if (merchantData) setStoreCode(merchantData.store_code || '----');
+
             const { data, error } = await supabase
                 .from('branches')
                 .select('*')
@@ -52,7 +63,7 @@ const BranchManagement = () => {
             setFormData({ name: '', address: '', phone: '', login_key: '', is_active: true });
             fetchBranches();
         } catch (err) {
-            alert('儲存失敗');
+            alert('儲存失敗：金鑰可能重複或格式錯誤');
         }
     };
 
@@ -65,7 +76,8 @@ const BranchManagement = () => {
     const handleCopy = async (branch) => {
         try {
             const merchantId = await store.getMerchantId();
-            const randomKey = Math.floor(10000000 + Math.random() * 90000000).toString();
+            const randomPin = Math.floor(1000 + Math.random() * 9000).toString();
+            const randomKey = `${storeCode}${randomPin}`;
 
             const newBranchData = {
                 name: `${branch.name} - 副本`,
@@ -145,21 +157,27 @@ const BranchManagement = () => {
                                 />
                             </div>
                             <div className="space-y-3">
-                                <Label className="font-black text-slate-900 ml-1 uppercase text-xs tracking-widest">系統登入金鑰 (8 碼)</Label>
+                                <Label className="font-black text-slate-900 ml-1 uppercase text-xs tracking-widest">系統登入金鑰 (8 碼: {storeCode} + PIN)</Label>
                                 <div className="flex gap-2">
+                                    <div className="h-14 rounded-l-2xl bg-slate-200 flex items-center px-4 font-black text-slate-500 border-r border-slate-300">
+                                        {storeCode}
+                                    </div>
                                     <Input
-                                        placeholder="手動輸入或自動產生"
-                                        value={formData.login_key || ''}
-                                        onChange={e => setFormData({ ...formData, login_key: e.target.value.replace(/[^0-9]/g, '').slice(0, 8) })}
-                                        className="h-14 rounded-2xl bg-slate-50 border-transparent focus:bg-white focus:border-teal-500/30 transition-all font-black tracking-[0.2em] text-center px-5 flex-1"
-                                        maxLength={8}
+                                        placeholder="後 4 碼 PIN"
+                                        value={formData.login_key ? formData.login_key.replace(storeCode, '') : ''}
+                                        onChange={e => {
+                                            const pin = e.target.value.replace(/[^0-9]/g, '').slice(0, 4);
+                                            setFormData({ ...formData, login_key: `${storeCode}${pin}` });
+                                        }}
+                                        className="h-14 rounded-r-2xl bg-slate-50 border-transparent focus:bg-white focus:border-teal-500/30 transition-all font-black tracking-[0.4em] text-center px-5 flex-1"
+                                        maxLength={4}
                                     />
                                     <Button
                                         type="button"
                                         variant="ghost"
                                         onClick={() => {
-                                            const randomKey = Math.floor(10000000 + Math.random() * 90000000).toString();
-                                            setFormData(prev => ({ ...prev, login_key: randomKey }));
+                                            const randomPin = Math.floor(1000 + Math.random() * 9000).toString();
+                                            setFormData(prev => ({ ...prev, login_key: `${storeCode}${randomPin}` }));
                                         }}
                                         className="h-14 w-14 rounded-2xl bg-slate-100 hover:bg-teal-50 text-slate-600 hover:text-teal-600 transition-all flex-shrink-0"
                                     >

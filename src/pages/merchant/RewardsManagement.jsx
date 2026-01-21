@@ -13,6 +13,8 @@ const RewardsManagement = () => {
     const [selectedBranchId, setSelectedBranchId] = useState('');
     const [loading, setLoading] = useState(true);
     const [type, setType] = useState('add'); // 'add' | 'redeem'
+    const [branchLimit, setBranchLimit] = useState(2);
+    const [savingLimit, setSavingLimit] = useState(false);
 
     // New Option State
     const [newItem, setNewItem] = useState({ label: '', value: '', type: 'add' });
@@ -52,10 +54,41 @@ const RewardsManagement = () => {
             setLoading(true);
             const data = await store.getLoyaltyOptions(branchId);
             setOptions(data || []);
+
+            // Fetch branch limit
+            const { data: branchData, error: branchError } = await supabase
+                .from('branches')
+                .select('daily_redemption_limit')
+                .eq('id', branchId)
+                .maybeSingle();
+            if (!branchError && branchData) {
+                setBranchLimit(branchData.daily_redemption_limit ?? 2);
+            }
         } catch (err) {
             console.error(err);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleUpdateLimit = async (newLimit) => {
+        try {
+            setSavingLimit(true);
+            const val = parseInt(newLimit);
+            if (isNaN(val) || val < 0 || val > 10) return;
+
+            const { error } = await supabase
+                .from('branches')
+                .update({ daily_redemption_limit: val })
+                .eq('id', selectedBranchId);
+
+            if (error) throw error;
+            setBranchLimit(val);
+        } catch (err) {
+            console.error(err);
+            alert('更新兌換上限失敗');
+        } finally {
+            setSavingLimit(false);
         }
     };
 
@@ -99,20 +132,39 @@ const RewardsManagement = () => {
                     </p>
                 </div>
                 {branches.length > 0 && (
-                    <div className="flex flex-col gap-2 min-w-[240px]">
-                        <Label className="font-black text-slate-400 uppercase text-[10px] tracking-[0.2em] ml-1">選擇管理分店</Label>
-                        <select
-                            value={selectedBranchId}
-                            onChange={(e) => {
-                                setSelectedBranchId(e.target.value);
-                                fetchOptions(e.target.value);
-                            }}
-                            className="h-14 rounded-2xl bg-white border-2 border-slate-100 focus:border-indigo-500/30 transition-all font-bold px-5 appearance-none cursor-pointer shadow-soft-sm"
-                        >
-                            {branches.map(b => (
-                                <option key={b.id} value={b.id}>{b.name}</option>
-                            ))}
-                        </select>
+                    <div className="flex flex-col md:flex-row gap-6">
+                        <div className="flex flex-col gap-2 min-w-[200px]">
+                            <Label className="font-black text-slate-400 uppercase text-[10px] tracking-[0.2em] ml-1">選擇管理分店</Label>
+                            <select
+                                value={selectedBranchId}
+                                onChange={(e) => {
+                                    setSelectedBranchId(e.target.value);
+                                    fetchOptions(e.target.value);
+                                }}
+                                className="h-14 rounded-2xl bg-white border-2 border-slate-100 focus:border-indigo-500/30 transition-all font-bold px-5 appearance-none cursor-pointer shadow-soft-sm"
+                            >
+                                {branches.map(b => (
+                                    <option key={b.id} value={b.id}>{b.name}</option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <div className="flex flex-col gap-2 min-w-[160px]">
+                            <Label className="font-black text-slate-400 uppercase text-[10px] tracking-[0.2em] ml-1">每日兌換上限</Label>
+                            <div className="flex items-center gap-2">
+                                <select
+                                    value={branchLimit}
+                                    onChange={(e) => handleUpdateLimit(e.target.value)}
+                                    disabled={savingLimit}
+                                    className="h-14 rounded-2xl bg-white border-2 border-slate-100 focus:border-indigo-500/30 transition-all font-black px-5 appearance-none cursor-pointer shadow-soft-sm flex-1"
+                                >
+                                    {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => (
+                                        <option key={n} value={n}>{n === 0 ? '0 (不限次數)' : n}</option>
+                                    ))}
+                                </select>
+                                {savingLimit && <RefreshCw className="w-5 h-5 text-indigo-500 animate-spin" />}
+                            </div>
+                        </div>
                     </div>
                 )}
             </div>

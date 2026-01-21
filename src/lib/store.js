@@ -63,7 +63,7 @@ export const store = {
         // Query branches by key
         const { data, error } = await supabase
             .from('branches')
-            .select('id, name, merchant_id, is_active, store_name:merchants(store_name)')
+            .select('id, name, merchant_id, is_active, daily_redemption_limit, theme_color, reset_interval, store_name:merchants(store_name)')
             .eq('login_key', key)
             .maybeSingle();
 
@@ -75,6 +75,9 @@ export const store = {
             branch_name: data.name,
             merchant_id: data.merchant_id,
             is_active: data.is_active !== false, // Default to true if null
+            daily_redemption_limit: data.daily_redemption_limit ?? 2,
+            theme_color: data.theme_color || 'teal',
+            reset_interval: data.reset_interval || 10,
             store_name: (data.store_name && data.store_name.store_name) || 'Unknown Store'
         };
     },
@@ -217,9 +220,12 @@ export const store = {
 
         // 0. Check Daily Limit (Only if not manual)
         if (!isManual) {
-            const dailyCount = await store.getRedemptionCountToday(phone);
-            if (dailyCount >= 2) {
-                throw new Error('Limit reached');
+            const limit = terminalSession?.daily_redemption_limit ?? 2;
+            if (limit > 0) {
+                const dailyCount = await store.getRedemptionCountToday(phone);
+                if (dailyCount >= limit) {
+                    throw new Error('Limit reached');
+                }
             }
         }
 
@@ -282,5 +288,13 @@ export const store = {
 
         if (error) throw error;
         return data;
+    },
+
+    updatePassword: async (newPassword) => {
+        const { error } = await supabase.auth.updateUser({
+            password: newPassword
+        });
+        if (error) throw error;
+        return true;
     }
 };

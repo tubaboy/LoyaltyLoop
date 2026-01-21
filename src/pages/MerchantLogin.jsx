@@ -1,18 +1,54 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { store } from '../lib/store';
 import { supabase } from '../lib/supabase';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2 } from 'lucide-react';
+import { Loader2, AlertCircle, XCircle, Info } from 'lucide-react';
+
+const StatusAlert = ({ message, type = 'error', onClear }) => {
+    if (!message) return null;
+
+    const styles = {
+        error: "bg-red-50/80 border-red-200/50 text-red-800",
+        warning: "bg-amber-50/80 border-amber-200/50 text-amber-800",
+        info: "bg-teal-50/80 border-teal-200/50 text-teal-800"
+    };
+
+    const icons = {
+        error: <XCircle className="w-5 h-5 text-red-500" />,
+        warning: <AlertCircle className="w-5 h-5 text-amber-500" />,
+        info: <Info className="w-5 h-5 text-teal-500" />
+    };
+
+    return (
+        <div className={`p-4 rounded-2xl border backdrop-blur-md shadow-soft-sm animate-in slide-in-from-top-2 fade-in duration-300 ${styles[type]}`}>
+            <div className="flex gap-3">
+                <div className="shrink-0 mt-0.5">{icons[type]}</div>
+                <div>
+                    <p className="text-sm font-black leading-tight mb-1">系統提示</p>
+                    <p className="text-xs font-bold opacity-90 leading-relaxed">{message}</p>
+                </div>
+            </div>
+        </div>
+    );
+};
 
 export default function MerchantLogin({ onLogin }) {
-    const [isSignUp, setIsSignUp] = useState(false);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [message, setMessage] = useState('');
+
+    useEffect(() => {
+        // Check for persisted error (handles silent logout issue)
+        const savedError = sessionStorage.getItem('login_error');
+        if (savedError) {
+            setError(savedError);
+            sessionStorage.removeItem('login_error');
+        }
+    }, []);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -21,26 +57,39 @@ export default function MerchantLogin({ onLogin }) {
         setIsLoading(true);
 
         try {
-            if (isSignUp) {
-                const { data, error: signUpError } = await supabase.auth.signUp({
-                    email,
-                    password,
-                });
-                if (signUpError) throw signUpError;
+            const { session } = await store.login(email, password);
+            if (!session?.user) throw new Error("登入資訊獲取失敗");
 
-                if (data && data.user && data.user.identities && data.user.identities.length === 0) {
-                    setMessage('該 Email 已被註冊，請直接登入');
-                    setIsSignUp(false);
-                } else {
-                    setMessage('註冊成功！請告訴我你的 Email 以便幫你升級為 Admin。');
+            // 1. Check user role
+            const role = await store.getUserRole(session.user);
+
+            // 2. If merchant, verify status
+            if (role === 'merchant') {
+                const { data: merchantData, error: statusError } = await supabase
+                    .from('merchants')
+                    .select('status')
+                    .eq('id', session.user.id)
+                    .single();
+
+                if (statusError) throw new Error("讀取帳號狀態失敗");
+
+                if (merchantData.status !== 'active') {
+                    const statusMsg = merchantData.status === 'suspended'
+                        ? '此帳號已被系統管理員停權。如有疑問，請聯絡客服。'
+                        : '您的帳號目前暫停服務，可能是因為合約到期或手動設定，請聯絡管理員確認。';
+
+                    // PERSIST: Save error before triggering logout cleanup
+                    sessionStorage.setItem('login_error', statusMsg);
+                    await store.logout();
+                    // Component will re-mount/re-render, error will be picked up by useEffect
+                    return;
                 }
-            } else {
-                await store.login(email, password);
-                if (onLogin) onLogin();
             }
+
+            if (onLogin) onLogin();
         } catch (err) {
             console.error(err);
-            setError(err.message || '操作失敗');
+            setError(err.message || '登入失敗，請檢查帳號密碼');
         } finally {
             setIsLoading(false);
         }
@@ -83,17 +132,9 @@ export default function MerchantLogin({ onLogin }) {
                     </div>
                 </div>
 
-                {error && (
-                    <div className="p-4 bg-red-50 text-red-600 rounded-xl text-sm font-bold animate-in shake border border-red-100/50">
-                        {error}
-                    </div>
-                )}
+                {error && <StatusAlert message={error} type="error" />}
 
-                {message && (
-                    <div className="p-4 bg-teal-50 text-teal-700 rounded-xl text-sm font-bold border border-teal-100/50">
-                        {message}
-                    </div>
-                )}
+                {message && <StatusAlert message={message} type="info" />}
 
                 <div className="pt-2">
                     <Button
@@ -102,30 +143,14 @@ export default function MerchantLogin({ onLogin }) {
                         className="w-full h-14 text-lg font-black rounded-2xl shadow-teal-200 shadow-xl"
                         disabled={isLoading}
                     >
-                        {isLoading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : (isSignUp ? '建立管理員帳號' : '登入系統')}
+                        {isLoading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : '登入系統'}
                     </Button>
                 </div>
             </form>
 
-            <div className="text-center">
-                <button
-                    type="button"
-                    onClick={() => {
-                        setIsSignUp(!isSignUp);
-                        setError('');
-                        setMessage('');
-                    }}
-                    className="text-sm font-medium text-teal-600 hover:text-teal-500 underline underline-offset-4"
-                >
-                    {isSignUp ? '已有帳號？返回登入' : '還沒有帳號？現在註冊一個'}
-                </button>
+            <div className="text-center text-xs text-slate-500 mt-4 font-medium">
+                商家帳號由管理員開立，若有疑問請連繫系統管理員。
             </div>
-
-            {!isSignUp && (
-                <div className="text-center text-xs text-slate-500 mt-4 font-medium">
-                    商家帳號由管理員開立，若有疑問請連繫系統管理員。
-                </div>
-            )}
         </div>
     );
 }

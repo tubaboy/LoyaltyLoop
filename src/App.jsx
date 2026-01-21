@@ -6,6 +6,7 @@ import DashboardLayout from './components/layouts/DashboardLayout';
 import MerchantDashboard from './pages/merchant/MerchantDashboard';
 import BranchManagement from './pages/merchant/BranchManagement';
 import RewardsManagement from './pages/merchant/RewardsManagement';
+import Settings from './pages/merchant/Settings';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AuthLayout from './components/layouts/AuthLayout';
 import LandingPage from './pages/LandingPage';
@@ -58,7 +59,8 @@ const ProtectedRoute = ({ children, allowedRole, userRole, hasSession }) => {
     return <Navigate to="/login" replace />;
   }
 
-  // If role is still loading or null despite having a session
+  // If role is null but has session, ONLY show full screen loader if we don't have a role yet.
+  // This prevents the intrusive "Synchronizing" screen during background re-fetches (e.g. after password change)
   if (userRole === null) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-slate-50 theme-saas p-4">
@@ -261,6 +263,7 @@ function App() {
             <Route index element={<MerchantDashboard />} />
             <Route path="branches" element={<BranchManagement />} />
             <Route path="rewards" element={<RewardsManagement />} />
+            <Route path="settings" element={<Settings />} />
           </Route>
 
           {/* Admin Routes */}

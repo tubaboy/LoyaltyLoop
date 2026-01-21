@@ -6,6 +6,160 @@ import { Card, CardContent } from "@/components/ui/card";
 import { ArrowLeft, Delete, Monitor, LogOut, Maximize, Minimize, X } from 'lucide-react';
 import { cn } from "@/lib/utils";
 
+const THEME_MAP = {
+    teal: {
+        primary: "teal-600",
+        bg: "bg-teal-50",
+        light: "bg-teal-100",
+        shadow: "shadow-teal-200",
+        gradient: "from-teal-600 to-cyan-700",
+        accent: "text-teal-200",
+        selection: "selection:bg-teal-100 selection:text-teal-900",
+        // Static class strings for Tailwind JIT
+        textPrimary: "text-teal-600",
+        bgPrimary: "bg-teal-600",
+        hoverBgPrimary: "hover:bg-teal-600/90",
+        borderPrimary: "border-teal-600",
+        borderLight: "border-teal-100",
+        shadowPrimary: "shadow-teal-600/20",
+        shadowPrimary50: "shadow-teal-600/50",
+        textAccent: "text-teal-200",
+        bgAccent: "bg-teal-200",
+        hoverBgAccent: "hover:bg-teal-50",
+        hoverTextPrimary: "hover:text-teal-600",
+        focusBorder: "group-focus-within:border-teal-500/30",
+        statusActive: "bg-teal-600 shadow-teal-600/50",
+        badgeBg: "bg-teal-50",
+        badgeText: "text-teal-600",
+        badgeBorder: "border-teal-100"
+    },
+    indigo: {
+        primary: "indigo-600",
+        bg: "bg-indigo-50",
+        light: "bg-indigo-100",
+        shadow: "shadow-indigo-200",
+        gradient: "from-indigo-600 to-blue-700",
+        accent: "text-indigo-200",
+        selection: "selection:bg-indigo-100 selection:text-indigo-900",
+        textPrimary: "text-indigo-600",
+        bgPrimary: "bg-indigo-600",
+        hoverBgPrimary: "hover:bg-indigo-600/90",
+        borderPrimary: "border-indigo-600",
+        borderLight: "border-indigo-100",
+        shadowPrimary: "shadow-indigo-600/20",
+        shadowPrimary50: "shadow-indigo-600/50",
+        textAccent: "text-indigo-200",
+        bgAccent: "bg-indigo-200",
+        hoverBgAccent: "hover:bg-indigo-50",
+        hoverTextPrimary: "hover:text-indigo-600",
+        focusBorder: "group-focus-within:border-indigo-500/30",
+        statusActive: "bg-indigo-600 shadow-indigo-600/50",
+        badgeBg: "bg-indigo-50",
+        badgeText: "text-indigo-600",
+        badgeBorder: "border-indigo-100"
+    },
+    rose: {
+        primary: "rose-600",
+        bg: "bg-rose-50",
+        light: "bg-rose-100",
+        shadow: "shadow-rose-200",
+        gradient: "from-rose-600 to-pink-700",
+        accent: "text-rose-200",
+        selection: "selection:bg-rose-100 selection:text-rose-900",
+        textPrimary: "text-rose-600",
+        bgPrimary: "bg-rose-600",
+        hoverBgPrimary: "hover:bg-rose-600/90",
+        borderPrimary: "border-rose-600",
+        borderLight: "border-rose-100",
+        shadowPrimary: "shadow-rose-600/20",
+        shadowPrimary50: "shadow-rose-600/50",
+        textAccent: "text-rose-200",
+        bgAccent: "bg-rose-200",
+        hoverBgAccent: "hover:bg-rose-50",
+        hoverTextPrimary: "hover:text-rose-600",
+        focusBorder: "group-focus-within:border-rose-500/30",
+        statusActive: "bg-rose-600 shadow-rose-600/50",
+        badgeBg: "bg-rose-50",
+        badgeText: "text-rose-600",
+        badgeBorder: "border-rose-100"
+    },
+    amber: {
+        primary: "amber-600",
+        bg: "bg-amber-50",
+        light: "bg-amber-100",
+        shadow: "shadow-amber-200",
+        gradient: "from-amber-600 to-orange-700",
+        accent: "text-amber-200",
+        selection: "selection:bg-amber-100 selection:text-amber-900",
+        textPrimary: "text-amber-600",
+        bgPrimary: "bg-amber-600",
+        hoverBgPrimary: "hover:bg-amber-600/90",
+        borderPrimary: "border-amber-600",
+        borderLight: "border-amber-100",
+        shadowPrimary: "shadow-amber-600/20",
+        shadowPrimary50: "shadow-amber-600/50",
+        textAccent: "text-amber-200",
+        bgAccent: "bg-amber-200",
+        hoverBgAccent: "hover:bg-amber-50",
+        hoverTextPrimary: "hover:text-amber-600",
+        focusBorder: "group-focus-within:border-amber-500/30",
+        statusActive: "bg-amber-600 shadow-amber-600/50",
+        badgeBg: "bg-amber-50",
+        badgeText: "text-amber-600",
+        badgeBorder: "border-amber-100"
+    },
+    emerald: {
+        primary: "emerald-600",
+        bg: "bg-emerald-50",
+        light: "bg-emerald-100",
+        shadow: "shadow-emerald-200",
+        gradient: "from-emerald-600 to-teal-700",
+        accent: "text-emerald-200",
+        selection: "selection:bg-emerald-100 selection:text-emerald-900",
+        textPrimary: "text-emerald-600",
+        bgPrimary: "bg-emerald-600",
+        hoverBgPrimary: "hover:bg-emerald-600/90",
+        borderPrimary: "border-emerald-600",
+        borderLight: "border-emerald-100",
+        shadowPrimary: "shadow-emerald-600/20",
+        shadowPrimary50: "shadow-emerald-600/50",
+        textAccent: "text-emerald-200",
+        bgAccent: "bg-emerald-200",
+        hoverBgAccent: "hover:bg-emerald-50",
+        hoverTextPrimary: "hover:text-emerald-600",
+        focusBorder: "group-focus-within:border-emerald-500/30",
+        statusActive: "bg-emerald-600 shadow-emerald-600/50",
+        badgeBg: "bg-emerald-50",
+        badgeText: "text-emerald-600",
+        badgeBorder: "border-emerald-100"
+    },
+    slate: {
+        primary: "slate-700",
+        bg: "bg-slate-50",
+        light: "bg-slate-200",
+        shadow: "shadow-slate-300",
+        gradient: "from-slate-700 to-slate-900",
+        accent: "text-slate-400",
+        selection: "selection:bg-slate-200 selection:text-slate-900",
+        textPrimary: "text-slate-700",
+        bgPrimary: "bg-slate-700",
+        hoverBgPrimary: "hover:bg-slate-700/90",
+        borderPrimary: "border-slate-700",
+        borderLight: "border-slate-200",
+        shadowPrimary: "shadow-slate-700/20",
+        shadowPrimary50: "shadow-slate-700/50",
+        textAccent: "text-slate-400",
+        bgAccent: "bg-slate-400",
+        hoverBgAccent: "hover:bg-slate-100",
+        hoverTextPrimary: "hover:text-slate-700",
+        focusBorder: "group-focus-within:border-slate-500/30",
+        statusActive: "bg-slate-700 shadow-slate-700/50",
+        badgeBg: "bg-slate-100",
+        badgeText: "text-slate-700",
+        badgeBorder: "border-slate-200"
+    }
+};
+
 export default function CustomerTerminal({ onLogout }) {
     const navigate = useNavigate();
     const [view, setView] = useState('search'); // 'search' | 'action'
@@ -22,6 +176,8 @@ export default function CustomerTerminal({ onLogout }) {
     const [customAmount, setCustomAmount] = useState('');
     const [customMode, setCustomMode] = useState('add'); // 'add' | 'deduct'
     const [isFullscreen, setIsFullscreen] = useState(false);
+    const [theme, setTheme] = useState(THEME_MAP.teal);
+    const [resetInterval, setResetInterval] = useState(10);
 
     const toggleFullscreen = () => {
         if (!document.fullscreenElement) {
@@ -48,6 +204,8 @@ export default function CustomerTerminal({ onLogout }) {
                 store_name: session.store_name,
                 branch_name: session.branch_name
             });
+            setTheme(THEME_MAP[session.theme_color] || THEME_MAP.teal);
+            setResetInterval(session.reset_interval || 10);
         }
 
         return () => {
@@ -59,7 +217,7 @@ export default function CustomerTerminal({ onLogout }) {
         if (resetTimerRef.current) clearTimeout(resetTimerRef.current);
         resetTimerRef.current = setTimeout(() => {
             handleBack(); // Simply go back to search
-        }, 10000);
+        }, resetInterval * 1000);
     };
 
     const cancelAutoReset = () => {
@@ -128,7 +286,7 @@ export default function CustomerTerminal({ onLogout }) {
         try {
             const newPoints = await store.addPoints(phone, amount);
             setPoints(newPoints);
-            setMessage(`Added ${amount} Point${amount > 1 ? 's' : ''}! 🎉 (Resetting in 10s...)`);
+            setMessage(`Added ${amount} Point${amount > 1 ? 's' : ''}! 🎉 (Resetting in ${resetInterval}s...)`);
             startAutoReset();
         } catch (error) {
             console.error(error);
@@ -146,14 +304,16 @@ export default function CustomerTerminal({ onLogout }) {
             if (success !== false) {
                 setPoints(success);
                 if (!isManual) setRedemptionCount(prev => prev + 1);
-                setMessage(`${isManual ? '扣除' : '兌換'} ${cost} 點! ${isManual ? '🔧' : '🎁'} (Resetting in 10s...)`);
+                setMessage(`${isManual ? '扣除' : '兌換'} ${cost} 點! ${isManual ? '🔧' : '🎁'} (Resetting in ${resetInterval}s...)`);
                 startAutoReset();
             } else {
                 setMessage('點數不足! ⚠️');
             }
         } catch (error) {
             if (error.message === 'Limit reached') {
-                setMessage('今日兌換次數已達上限 2 次 ⚠️');
+                const session = store.getTerminalSession();
+                const limit = session?.daily_redemption_limit ?? 2;
+                setMessage(`今日兌換次數已達上限 ${limit} 次 ⚠️`);
             } else {
                 console.error(error);
                 setMessage('Redemption error. ❌');
@@ -197,7 +357,7 @@ export default function CustomerTerminal({ onLogout }) {
     };
 
     return (
-        <div className="min-h-screen bg-slate-50 flex flex-col font-sans selection:bg-teal-100 selection:text-teal-900">
+        <div className={cn("min-h-screen bg-slate-50 flex flex-col font-sans", theme.selection)}>
 
 
             <main className="flex-1 overflow-auto relative">
@@ -223,7 +383,7 @@ export default function CustomerTerminal({ onLogout }) {
                                     <div className="space-y-6">
                                         <div className="space-y-4">
                                             <div className="flex items-center gap-4 mb-6">
-                                                <div className="w-16 h-16 p-2 bg-white rounded-full flex items-center justify-center shadow-lg shadow-teal-100">
+                                                <div className={cn("w-16 h-16 p-2 bg-white rounded-full flex items-center justify-center shadow-lg", `shadow-${theme.primary}/10`)}>
                                                     <img src={`${import.meta.env.BASE_URL}logo.png`} alt="LoyaltyLoop Logo" className="w-full h-full object-contain mix-blend-multiply" />
                                                 </div>
                                                 <div>
@@ -238,8 +398,8 @@ export default function CustomerTerminal({ onLogout }) {
 
                                         {/* Large Phone Display */}
                                         <div className="relative group">
-                                            <div className="absolute -inset-2 bg-gradient-to-r from-teal-500/20 to-cyan-500/20 rounded-[3rem] opacity-0 group-hover:opacity-100 transition-opacity duration-500" style={{ filter: 'blur(var(--ui-blur-md))' }} />
-                                            <div className="relative flex items-center justify-center h-24 lg:h-32 bg-slate-50 rounded-[2.5rem] border-2 border-transparent group-focus-within:border-teal-500/30 group-focus-within:bg-white transition-all duration-300 shadow-inner">
+                                            <div className={cn("absolute -inset-2 rounded-[3rem] opacity-0 group-hover:opacity-100 transition-opacity duration-500", theme.bgAccent + "/20")} style={{ filter: 'blur(var(--ui-blur-md))' }} />
+                                            <div className={cn("relative flex items-center justify-center h-24 lg:h-32 bg-slate-50 rounded-[2.5rem] border-2 border-transparent transition-all duration-300 shadow-inner", theme.focusBorder, "group-focus-within:bg-white")}>
                                                 <div className="flex gap-2 items-center">
                                                     {Array.from({ length: 10 }).map((_, i) => (
                                                         <React.Fragment key={i}>
@@ -259,14 +419,14 @@ export default function CustomerTerminal({ onLogout }) {
                                         {/* Status Indicator */}
                                         <div className="space-y-2">
                                             {terminalInfo.store_name && (
-                                                <div className="text-[10px] font-black text-teal-600/60 uppercase tracking-[0.2em] ml-1">
+                                                <div className={cn("text-[10px] font-black uppercase tracking-[0.2em] ml-1", theme.textPrimary + "/60")}>
                                                     {terminalInfo.store_name} - {terminalInfo.branch_name}
                                                 </div>
                                             )}
                                             <div className="flex items-center gap-3 text-slate-400 font-bold">
                                                 <div className={cn(
                                                     "w-3 h-3 rounded-full transition-all duration-300",
-                                                    phone.length === 10 ? "bg-teal-500 animate-pulse shadow-lg shadow-teal-500/50" : "bg-slate-200"
+                                                    phone.length === 10 ? cn(theme.bgPrimary, "animate-pulse shadow-lg", theme.shadowPrimary50) : "bg-slate-200"
                                                 )} />
                                                 <span className="text-sm uppercase tracking-widest">
                                                     {phone.length === 10 ? '已就緒 - 可查詢' : `已輸入 ${phone.length}/10 位數字`}
@@ -283,7 +443,7 @@ export default function CustomerTerminal({ onLogout }) {
                                                     key={num}
                                                     variant="ghost"
                                                     onClick={() => handleNumClick(num.toString())}
-                                                    className="h-18 lg:h-22 text-3xl lg:text-4xl font-black rounded-[1.5rem] bg-slate-50 hover:bg-teal-50 hover:text-teal-600 transition-all active:scale-95 shadow-sm hover:shadow-md"
+                                                    className={cn("h-18 lg:h-22 text-3xl lg:text-4xl font-black rounded-[1.5rem] bg-slate-50 transition-all active:scale-95 shadow-sm hover:shadow-md", theme.hoverBgAccent, theme.hoverTextPrimary)}
                                                 >
                                                     {num}
                                                 </Button>
@@ -298,7 +458,7 @@ export default function CustomerTerminal({ onLogout }) {
                                             <Button
                                                 variant="ghost"
                                                 onClick={() => handleNumClick('0')}
-                                                className="h-18 lg:h-22 text-3xl lg:text-4xl font-black rounded-[1.5rem] bg-slate-50 hover:bg-teal-50 hover:text-teal-600 transition-all active:scale-95 shadow-sm hover:shadow-md"
+                                                className={cn("h-18 lg:h-22 text-3xl lg:text-4xl font-black rounded-[1.5rem] bg-slate-50 transition-all active:scale-95 shadow-sm hover:shadow-md", theme.hoverBgAccent, theme.hoverTextPrimary)}
                                             >
                                                 0
                                             </Button>
@@ -312,10 +472,13 @@ export default function CustomerTerminal({ onLogout }) {
                                         </div>
 
                                         <Button
-                                            variant="primary"
+                                            variant="ghost" // Using ghost but manually applying theme classes
                                             onClick={handleGo}
                                             disabled={phone.length < 10 || isLoading}
-                                            className="w-full h-18 text-2xl font-black rounded-[2rem] shadow-teal-200 shadow-2xl disabled:opacity-50 group"
+                                            className={cn(
+                                                "w-full h-18 text-2xl font-black rounded-[2rem] shadow-2xl disabled:opacity-50 group text-white transition-all",
+                                                theme.bgPrimary, theme.hoverBgPrimary, theme.shadowPrimary
+                                            )}
                                         >
                                             {isLoading ? '查詢中...' : (
                                                 <span className="flex items-center justify-center gap-4">
@@ -341,14 +504,14 @@ export default function CustomerTerminal({ onLogout }) {
                             <div className="w-[320px] md:w-[360px] lg:w-[400px] shrink-0 flex flex-col gap-6">
 
                                 {/* Points Display Card (Integrated Customer Info) */}
-                                <Card className="bg-gradient-to-br from-teal-600 to-cyan-700 text-white p-6 md:p-8 lg:p-10 flex flex-col justify-between relative shadow-soft-2xl min-h-[260px] md:min-h-[280px] shrink-0 border-0 rounded-[2.5rem] overflow-hidden">
+                                <Card className={cn("text-white p-6 md:p-8 lg:p-10 flex flex-col justify-between relative shadow-soft-2xl min-h-[260px] md:min-h-[280px] shrink-0 border-0 rounded-[2.5rem] overflow-hidden bg-gradient-to-br", theme.gradient)}>
                                     {/* Decorative Background */}
                                     <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-20 -mt-20 blur-2xl pointer-events-none" style={{ filter: 'blur(var(--ui-blur-md))' }} />
 
                                     {/* Header: Customer Info */}
                                     <div className="relative z-10 w-full flex justify-between items-start border-b border-white/20 pb-4 mb-4">
                                         <div>
-                                            <div className="text-teal-100 text-xs font-bold uppercase tracking-wider mb-1">目前操作顧客</div>
+                                            <div className={cn("text-xs font-bold uppercase tracking-wider mb-1 opacity-90", theme.accent)}>目前操作顧客</div>
                                             <div className="text-2xl font-black text-white tracking-tight">
                                                 {phone.replace(/(\d{4})(\d{6})/, '$1-$2')}
                                             </div>
@@ -360,12 +523,12 @@ export default function CustomerTerminal({ onLogout }) {
 
                                     {/* Body: Points */}
                                     <div className="relative z-10 flex flex-col justify-center flex-1">
-                                        <h3 className="text-teal-100 font-bold text-base uppercase tracking-wide mb-3 opacity-90">累積剩餘點數</h3>
+                                        <h3 className={cn("font-bold text-base uppercase tracking-wide mb-3 opacity-90", theme.accent)}>累積剩餘點數</h3>
                                         <div className="flex items-baseline gap-2">
                                             <span className="text-6xl md:text-[5.5rem] font-black leading-none tracking-tighter">
                                                 {points}
                                             </span>
-                                            <span className="text-2xl md:text-3xl font-black text-teal-200">PTS</span>
+                                            <span className={cn("text-2xl md:text-3xl font-black", theme.accent)}>PTS</span>
                                         </div>
                                     </div>
                                 </Card>
@@ -376,8 +539,11 @@ export default function CustomerTerminal({ onLogout }) {
                                     <h3 className="text-slate-400 font-black uppercase tracking-[0.2em] text-xs mb-5">快速操作 ACTIONS</h3>
                                     <div className="grid grid-cols-1 gap-3">
                                         <Button
-                                            onClick={() => setShowCustomInput(true)}
-                                            className="h-16 rounded-[1.5rem] bg-slate-50 hover:bg-teal-50 text-slate-600 hover:text-teal-600 border-0 shadow-sm hover:shadow-md text-base font-black flex items-center justify-center gap-3 transition-all active:scale-95"
+                                            onClick={() => {
+                                                cancelAutoReset();
+                                                setShowCustomInput(true);
+                                            }}
+                                            className={cn("h-16 rounded-[1.5rem] bg-slate-50 text-slate-600 border-0 shadow-sm hover:shadow-md text-base font-black flex items-center justify-center gap-3 transition-all active:scale-95", theme.hoverBgAccent, theme.hoverTextPrimary)}
                                         >
                                             <span className="text-2xl">➕</span>
                                             自訂點數
@@ -395,7 +561,7 @@ export default function CustomerTerminal({ onLogout }) {
 
                                 {/* Sidebar Bottom Actions */}
                                 <div className="mt-auto pb-6 px-4 flex flex-col gap-2">
-                                    <Button variant="ghost" className="w-full justify-start text-slate-400 hover:text-teal-600 hover:bg-teal-50 rounded-xl" onClick={toggleFullscreen}>
+                                    <Button variant="ghost" className={cn("w-full justify-start text-slate-400 rounded-xl", theme.hoverTextPrimary, theme.hoverBgAccent)} onClick={toggleFullscreen}>
                                         {isFullscreen ? <Minimize className="mr-3 h-4 w-4" /> : <Maximize className="mr-3 h-4 w-4" />}
                                         {isFullscreen ? '退出全螢幕' : '進入全螢幕'}
                                     </Button>
@@ -414,7 +580,7 @@ export default function CustomerTerminal({ onLogout }) {
                                 {/* Add Points Section - Flexible height with max limit */}
                                 <div className="shrink-0 flex flex-col gap-4 max-h-[35%] min-h-[140px]">
                                     <div className="flex items-center gap-4 shrink-0">
-                                        <div className="w-12 h-12 bg-teal-100 text-teal-600 rounded-2xl flex items-center justify-center font-black text-2xl shadow-sm">+</div>
+                                        <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center font-black text-2xl shadow-sm", theme.light, theme.textPrimary)}>+</div>
                                         <h3 className="text-2xl lg:text-3xl font-black text-slate-900">累積點數</h3>
                                     </div>
                                     <div className="grid grid-cols-3 lg:grid-cols-4 gap-3 overflow-y-auto pr-2 pb-2">
@@ -423,7 +589,7 @@ export default function CustomerTerminal({ onLogout }) {
                                                 key={opt.id}
                                                 disabled={isLoading}
                                                 onClick={() => handleAddPoint(opt.value)}
-                                                className="h-24 rounded-[1.5rem] bg-white hover:bg-teal-600 text-teal-600 hover:text-white border-2 border-teal-100 shadow-soft-md hover:shadow-teal-200 hover:shadow-xl transition-all duration-300 group active:scale-95"
+                                                className={cn("h-24 rounded-[1.5rem] bg-white border-2 shadow-soft-md transition-all duration-300 group active:scale-95", theme.textPrimary, theme.borderLight, "hover:text-white", theme.hoverBgPrimary, theme.shadowPrimary)}
                                             >
                                                 <div className="flex flex-col items-center gap-0">
                                                     <span className="text-3xl font-black group-hover:scale-110 transition-transform">+{opt.value}</span>
@@ -440,21 +606,26 @@ export default function CustomerTerminal({ onLogout }) {
                                 {/* Redeem Rewards Section - Flexible height scrolling */}
                                 <div className="flex-1 flex flex-col gap-4 min-h-0 relative">
                                     <div className="flex items-center gap-4 shrink-0 sticky top-0 bg-slate-50 z-10 py-1">
-                                        <div className="w-12 h-12 bg-indigo-100 text-indigo-600 rounded-2xl flex items-center justify-center font-black text-2xl shadow-sm">★</div>
+                                        <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center font-black text-2xl shadow-sm", theme.light, theme.textPrimary)}>★</div>
                                         <h3 className="text-2xl lg:text-3xl font-black text-slate-900">兌換獎勵</h3>
-                                        {redemptionCount > 0 && redemptionCount < 2 && (
-                                            <div className="ml-auto bg-indigo-50 text-indigo-600 px-3 py-1 rounded-full text-xs font-black border border-indigo-100">
-                                                今日已兌換 {redemptionCount}/2 次
+                                        {redemptionCount > 0 && (store.getTerminalSession()?.daily_redemption_limit ?? 2) > 0 && (
+                                            <div className={cn("ml-auto px-3 py-1 rounded-full text-xs font-black border", theme.badgeBg, theme.textPrimary, theme.badgeBorder)}>
+                                                今日已兌換 {redemptionCount}/{store.getTerminalSession()?.daily_redemption_limit ?? 2} 次
+                                            </div>
+                                        )}
+                                        {redemptionCount > 0 && (store.getTerminalSession()?.daily_redemption_limit ?? 2) === 0 && (
+                                            <div className={cn("ml-auto px-3 py-1 rounded-full text-xs font-black border", theme.badgeBg, theme.textPrimary, theme.badgeBorder)}>
+                                                今日已兌換 {redemptionCount} 次 (不限次數)
                                             </div>
                                         )}
                                     </div>
 
                                     <div className="relative flex-1 min-h-0">
-                                        {redemptionCount >= 2 && (
+                                        {(store.getTerminalSession()?.daily_redemption_limit ?? 2) > 0 && redemptionCount >= (store.getTerminalSession()?.daily_redemption_limit ?? 2) && (
                                             <div className="absolute inset-0 z-20 bg-white/40 backdrop-blur-md rounded-[2.5rem] flex flex-col items-center justify-center p-6 text-center animate-in fade-in duration-500 border-2 border-dashed border-amber-200/50">
                                                 <div className="w-20 h-20 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center text-4xl mb-4 shadow-lg shadow-amber-200/50">⚠️</div>
                                                 <h4 className="text-2xl font-black text-slate-900 mb-2">兌換額度已達上限</h4>
-                                                <p className="text-slate-500 font-bold">同顧客於本分店每日限兌換 2 次</p>
+                                                <p className="text-slate-500 font-bold">同顧客於本分店每日限兌換 {store.getTerminalSession()?.daily_redemption_limit ?? 2} 次</p>
                                                 <div className="mt-6 px-6 py-2 bg-gradient-to-r from-amber-500 to-orange-600 text-white rounded-full font-black text-sm uppercase tracking-widest shadow-xl">
                                                     請明天再試 Tomorrow
                                                 </div>
@@ -463,17 +634,17 @@ export default function CustomerTerminal({ onLogout }) {
 
                                         <div className={cn(
                                             "grid grid-cols-2 gap-3 overflow-y-auto h-full pr-2 pb-4 content-start transition-all duration-500",
-                                            redemptionCount >= 2 && "opacity-20 grayscale pointer-events-none blur-[2px]"
+                                            (store.getTerminalSession()?.daily_redemption_limit ?? 2) > 0 && redemptionCount >= (store.getTerminalSession()?.daily_redemption_limit ?? 2) && "opacity-20 grayscale pointer-events-none blur-[2px]"
                                         )}>
                                             {options.filter(o => o.type === 'redeem').map(opt => (
                                                 <Button
                                                     key={opt.id}
-                                                    disabled={isLoading || points < opt.value || redemptionCount >= 2}
+                                                    disabled={isLoading || points < opt.value || ((store.getTerminalSession()?.daily_redemption_limit ?? 2) > 0 && redemptionCount >= (store.getTerminalSession()?.daily_redemption_limit ?? 2))}
                                                     onClick={() => handleRedeem(opt.value)}
                                                     className={cn(
                                                         "h-24 rounded-[1.5rem] flex justify-between items-center px-5 border-2 transition-all duration-300 active:scale-95 group",
-                                                        points >= opt.value && redemptionCount < 2
-                                                            ? "bg-white border-slate-100 hover:border-indigo-500 hover:bg-indigo-50 text-slate-900 shadow-soft-md hover:shadow-xl"
+                                                        points >= opt.value && ((store.getTerminalSession()?.daily_redemption_limit ?? 2) === 0 || redemptionCount < (store.getTerminalSession()?.daily_redemption_limit ?? 2))
+                                                            ? cn("bg-white border-slate-100 text-slate-900 shadow-soft-md hover:shadow-xl", theme.borderPrimary, theme.hoverBgAccent)
                                                             : "bg-slate-50 border-transparent text-slate-300 grayscale opacity-50 cursor-not-allowed shadow-none"
                                                     )}
                                                 >
@@ -483,7 +654,9 @@ export default function CustomerTerminal({ onLogout }) {
                                                     </div>
                                                     <div className={cn(
                                                         "w-10 h-10 rounded-full flex items-center justify-center font-black text-xs shrink-0 transition-colors",
-                                                        points >= opt.value && redemptionCount < 2 ? "bg-indigo-600 text-white group-hover:bg-indigo-500" : "bg-slate-200 text-slate-400"
+                                                        points >= opt.value && ((store.getTerminalSession()?.daily_redemption_limit ?? 2) === 0 || redemptionCount < (store.getTerminalSession()?.daily_redemption_limit ?? 2))
+                                                            ? cn("text-white", theme.bgPrimary, theme.hoverBgPrimary)
+                                                            : "bg-slate-200 text-slate-400"
                                                     )}>
                                                         兌換
                                                     </div>
@@ -495,9 +668,8 @@ export default function CustomerTerminal({ onLogout }) {
                             </div>
                         </div>
                     </div>
-                )
-                }
-            </main >
+                )}
+            </main>
 
             {/* Custom Amount Overlay */}
             {
@@ -524,7 +696,7 @@ export default function CustomerTerminal({ onLogout }) {
                                             onClick={() => setCustomMode('add')}
                                             className={cn(
                                                 "flex-1 h-12 rounded-xl text-lg font-black transition-all",
-                                                customMode === 'add' ? "bg-white text-teal-600 shadow-sm" : "text-slate-400 hover:text-slate-600"
+                                                customMode === 'add' ? cn("bg-white shadow-sm", theme.textPrimary) : "text-slate-400 hover:text-slate-600"
                                             )}
                                         >
                                             ➕ 增加點數
@@ -543,7 +715,7 @@ export default function CustomerTerminal({ onLogout }) {
 
                                     <div className={cn(
                                         "rounded-3xl h-24 md:h-48 flex items-center justify-center text-6xl md:text-8xl font-black shadow-inner transition-colors",
-                                        customMode === 'add' ? "bg-teal-50 text-teal-600" : "bg-red-50 text-red-600"
+                                        customMode === 'add' ? cn(theme.bg, theme.textPrimary) : "bg-red-50 text-red-600"
                                     )}>
                                         <span className="opacity-40 mr-2 md:mr-4">{customMode === 'add' ? '+' : '-'}</span>
                                         {customAmount || '0'}
@@ -563,18 +735,21 @@ export default function CustomerTerminal({ onLogout }) {
                                             key={num}
                                             variant="ghost"
                                             onClick={() => handleCustomNumClick(num.toString())}
-                                            className="h-16 md:h-20 text-2xl md:text-3xl font-bold rounded-2xl bg-slate-50 hover:bg-teal-50 transition-all active:scale-95"
+                                            className={cn("h-16 md:h-20 text-2xl md:text-3xl font-bold rounded-2xl bg-slate-50 transition-all active:scale-95", theme.hoverBgAccent)}
                                         >
                                             {num}
                                         </Button>
                                     ))}
                                     <Button onClick={handleCustomClear} variant="ghost" className="h-16 md:h-20 text-lg font-bold text-slate-400 hover:bg-slate-100 rounded-2xl">清除</Button>
-                                    <Button onClick={() => handleCustomNumClick('0')} variant="ghost" className="h-16 md:h-20 text-2xl md:text-3xl font-bold rounded-2xl bg-slate-50 hover:bg-teal-50 transition-all active:scale-95">0</Button>
+                                    <Button onClick={() => handleCustomNumClick('0')} variant="ghost" className={cn("h-16 md:h-20 text-2xl md:text-3xl font-bold rounded-2xl bg-slate-50 transition-all active:scale-95", theme.hoverBgAccent)}>0</Button>
                                     <Button
                                         onClick={handleCustomSubmit}
-                                        variant="primary"
+                                        variant="ghost"
                                         disabled={isLoading || !customAmount || customAmount === '0'}
-                                        className="h-16 md:h-20 text-xl md:text-2xl font-black rounded-2xl shadow-teal-200 shadow-xl"
+                                        className={cn(
+                                            "h-16 md:h-20 text-xl md:text-2xl font-black rounded-2xl text-white shadow-xl transition-all",
+                                            theme.bgPrimary, theme.hoverBgPrimary, theme.shadowPrimary
+                                        )}
                                     >
                                         {isLoading ? '...' : '確認'}
                                     </Button>
@@ -590,8 +765,8 @@ export default function CustomerTerminal({ onLogout }) {
             {/* Global Message Toast */}
             {
                 message && (
-                    <div className="fixed bottom-10 left-1/2 -translate-x-1/2 px-10 py-5 bg-slate-900 text-white text-xl font-bold rounded-3xl shadow-soft-2xl animate-in slide-in-from-bottom-8 fade-in duration-500 z-50 flex items-center gap-4 border border-white/10">
-                        <div className="w-8 h-8 bg-teal-500 rounded-full flex items-center justify-center text-sm">✓</div>
+                    <div className={cn("fixed bottom-10 left-1/2 -translate-x-1/2 px-10 py-5 bg-slate-900 text-white text-xl font-bold rounded-3xl shadow-soft-2xl animate-in slide-in-from-bottom-8 fade-in duration-500 z-50 flex items-center gap-4 border border-white/10")}>
+                        <div className={cn("w-8 h-8 rounded-full flex items-center justify-center text-sm", theme.bgPrimary)}>✓</div>
                         {message}
                     </div>
                 )

@@ -123,10 +123,13 @@ const TerminalLogin = () => {
                     <div>
                         <input
                             type="text"
-                            inputMode="numeric"
+                            autoCapitalize="characters"
+                            autoCorrect="off"
+                            autoComplete="off"
+                            spellCheck="false"
                             value={key}
-                            onChange={(e) => setKey(e.target.value.replace(/[^0-9]/g, '').slice(0, 8))}
-                            placeholder="例如：12345678"
+                            onChange={(e) => setKey(e.target.value.replace(/[^A-Za-z0-9]/g, '').toUpperCase().slice(0, 8))}
+                            placeholder="例如：A8B10001"
                             className="w-full text-center text-4xl font-black tracking-[0.2em] py-6 rounded-2xl bg-slate-50 border-2 border-transparent focus:border-teal-500/30 focus:bg-white outline-none transition-all placeholder:text-slate-200 text-slate-800"
                             autoFocus
                         />
