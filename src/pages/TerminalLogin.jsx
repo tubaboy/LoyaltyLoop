@@ -64,6 +64,11 @@ const TerminalLogin = () => {
             console.log("[TerminalLogin] Verification result:", branchData);
 
             if (branchData) {
+                if (branchData.is_active === false) {
+                    setError('該分店狀態為暫停營運，請聯絡企業管理員');
+                    setLoading(false);
+                    return;
+                }
                 store.setTerminalSession(branchData);
                 navigate('/terminal');
             } else {

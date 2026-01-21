@@ -61,10 +61,9 @@ export const store = {
     // Terminal Session Management
     verifyBranchKey: async (key) => {
         // Query branches by key
-        // Note: Requires RLS to allow public select on branches where login_key matches, or global public read (less secure)
         const { data, error } = await supabase
             .from('branches')
-            .select('id, name, merchant_id, store_name:merchants(store_name)')
+            .select('id, name, merchant_id, is_active, store_name:merchants(store_name)')
             .eq('login_key', key)
             .maybeSingle();
 
@@ -75,6 +74,7 @@ export const store = {
             branch_id: data.id,
             branch_name: data.name,
             merchant_id: data.merchant_id,
+            is_active: data.is_active !== false, // Default to true if null
             store_name: (data.store_name && data.store_name.store_name) || 'Unknown Store'
         };
     },
