@@ -605,7 +605,7 @@ export default function CustomerTerminal({ onLogout }) {
 
                                 {/* Redeem Rewards Section - Flexible height scrolling */}
                                 <div className="flex-1 flex flex-col gap-4 min-h-0 relative">
-                                    <div className="flex items-center gap-4 shrink-0 sticky top-0 bg-slate-50 z-10 py-1">
+                                    <div className="flex items-center gap-4 shrink-0 sticky top-0 bg-slate-50 z-30 py-2">
                                         <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center font-black text-2xl shadow-sm", theme.light, theme.textPrimary)}>★</div>
                                         <h3 className="text-2xl lg:text-3xl font-black text-slate-900">兌換獎勵</h3>
                                         {redemptionCount > 0 && (store.getTerminalSession()?.daily_redemption_limit ?? 2) > 0 && (
@@ -620,49 +620,46 @@ export default function CustomerTerminal({ onLogout }) {
                                         )}
                                     </div>
 
-                                    <div className="relative flex-1 min-h-0">
-                                        {(store.getTerminalSession()?.daily_redemption_limit ?? 2) > 0 && redemptionCount >= (store.getTerminalSession()?.daily_redemption_limit ?? 2) && (
-                                            <div className="absolute inset-0 z-20 bg-white/40 backdrop-blur-md rounded-[2.5rem] flex flex-col items-center justify-center p-6 text-center animate-in fade-in duration-500 border-2 border-dashed border-amber-200/50">
-                                                <div className="w-20 h-20 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center text-4xl mb-4 shadow-lg shadow-amber-200/50">⚠️</div>
-                                                <h4 className="text-2xl font-black text-slate-900 mb-2">兌換額度已達上限</h4>
-                                                <p className="text-slate-500 font-bold">同顧客於本分店每日限兌換 {store.getTerminalSession()?.daily_redemption_limit ?? 2} 次</p>
-                                                <div className="mt-6 px-6 py-2 bg-gradient-to-r from-amber-500 to-orange-600 text-white rounded-full font-black text-sm uppercase tracking-widest shadow-xl">
+                                    <div className="relative flex-1 min-h-0 flex flex-col">
+                                        {(store.getTerminalSession()?.daily_redemption_limit ?? 2) > 0 && redemptionCount >= (store.getTerminalSession()?.daily_redemption_limit ?? 2) ? (
+                                            <div className="flex-1 bg-white border-2 border-dashed border-amber-200 rounded-[2.5rem] flex flex-col items-center justify-center p-8 text-center animate-in fade-in zoom-in-95 duration-500">
+                                                <div className="w-20 h-20 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center text-4xl mb-6 shadow-sm">⚠️</div>
+                                                <h4 className="text-3xl font-black text-slate-900 mb-3">兌換額度已達上限</h4>
+                                                <p className="text-slate-500 font-bold text-lg mb-8">同顧客於本分店每日限兌換 {store.getTerminalSession()?.daily_redemption_limit ?? 2} 次</p>
+                                                <div className="px-8 py-3 bg-gradient-to-r from-amber-500 to-orange-600 text-white rounded-full font-black text-base uppercase tracking-widest shadow-xl">
                                                     請明天再試 Tomorrow
                                                 </div>
                                             </div>
+                                        ) : (
+                                            <div className="grid grid-cols-2 gap-3 overflow-y-auto h-full pr-2 pb-4 content-start transition-all duration-500">
+                                                {options.filter(o => o.type === 'redeem').map(opt => (
+                                                    <Button
+                                                        key={opt.id}
+                                                        disabled={isLoading || points < opt.value}
+                                                        onClick={() => handleRedeem(opt.value)}
+                                                        className={cn(
+                                                            "h-24 rounded-[1.5rem] flex justify-between items-center px-5 border-2 transition-all duration-300 active:scale-95 group",
+                                                            points >= opt.value
+                                                                ? cn("bg-white border-slate-100 text-slate-900 shadow-soft-md hover:shadow-xl", theme.borderPrimary, theme.hoverBgAccent)
+                                                                : "bg-slate-50 border-transparent text-slate-300 grayscale opacity-50 cursor-not-allowed shadow-none"
+                                                        )}
+                                                    >
+                                                        <div className="flex flex-col items-start gap-0 max-w-[60%] overflow-hidden">
+                                                            <span className="text-lg font-black truncate w-full text-left">{opt.label}</span>
+                                                            <span className="text-xs font-bold text-slate-400">消耗 {opt.value} 點</span>
+                                                        </div>
+                                                        <div className={cn(
+                                                            "w-10 h-10 rounded-full flex items-center justify-center font-black text-xs shrink-0 transition-colors",
+                                                            points >= opt.value
+                                                                ? cn("text-white", theme.bgPrimary, theme.hoverBgPrimary)
+                                                                : "bg-slate-200 text-slate-400"
+                                                        )}>
+                                                            兌換
+                                                        </div>
+                                                    </Button>
+                                                ))}
+                                            </div>
                                         )}
-
-                                        <div className={cn(
-                                            "grid grid-cols-2 gap-3 overflow-y-auto h-full pr-2 pb-4 content-start transition-all duration-500",
-                                            (store.getTerminalSession()?.daily_redemption_limit ?? 2) > 0 && redemptionCount >= (store.getTerminalSession()?.daily_redemption_limit ?? 2) && "opacity-20 grayscale pointer-events-none blur-[2px]"
-                                        )}>
-                                            {options.filter(o => o.type === 'redeem').map(opt => (
-                                                <Button
-                                                    key={opt.id}
-                                                    disabled={isLoading || points < opt.value || ((store.getTerminalSession()?.daily_redemption_limit ?? 2) > 0 && redemptionCount >= (store.getTerminalSession()?.daily_redemption_limit ?? 2))}
-                                                    onClick={() => handleRedeem(opt.value)}
-                                                    className={cn(
-                                                        "h-24 rounded-[1.5rem] flex justify-between items-center px-5 border-2 transition-all duration-300 active:scale-95 group",
-                                                        points >= opt.value && ((store.getTerminalSession()?.daily_redemption_limit ?? 2) === 0 || redemptionCount < (store.getTerminalSession()?.daily_redemption_limit ?? 2))
-                                                            ? cn("bg-white border-slate-100 text-slate-900 shadow-soft-md hover:shadow-xl", theme.borderPrimary, theme.hoverBgAccent)
-                                                            : "bg-slate-50 border-transparent text-slate-300 grayscale opacity-50 cursor-not-allowed shadow-none"
-                                                    )}
-                                                >
-                                                    <div className="flex flex-col items-start gap-0 max-w-[60%] overflow-hidden">
-                                                        <span className="text-lg font-black truncate w-full text-left">{opt.label}</span>
-                                                        <span className="text-xs font-bold text-slate-400">消耗 {opt.value} 點</span>
-                                                    </div>
-                                                    <div className={cn(
-                                                        "w-10 h-10 rounded-full flex items-center justify-center font-black text-xs shrink-0 transition-colors",
-                                                        points >= opt.value && ((store.getTerminalSession()?.daily_redemption_limit ?? 2) === 0 || redemptionCount < (store.getTerminalSession()?.daily_redemption_limit ?? 2))
-                                                            ? cn("text-white", theme.bgPrimary, theme.hoverBgPrimary)
-                                                            : "bg-slate-200 text-slate-400"
-                                                    )}>
-                                                        兌換
-                                                    </div>
-                                                </Button>
-                                            ))}
-                                        </div>
                                     </div>
                                 </div>
                             </div>
