@@ -1,33 +1,60 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
-import { Users, Store, CreditCard, LayoutDashboard, ChevronRight, Target, TrendingUp, Sparkles, Monitor } from 'lucide-react';
+import { Users, Store, CreditCard, LayoutDashboard, ChevronRight, Target, TrendingUp, Sparkles, Monitor, Download, ArrowUpRight, ArrowDownLeft, FileText, Trophy, BarChart3 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { store } from '../../lib/store';
 
 const MerchantDashboard = () => {
     const navigate = useNavigate();
+    const [selectedBranchId, setSelectedBranchId] = useState('all');
+    const [branches, setBranches] = useState([]);
+    const [transactions, setTransactions] = useState([]);
     const [stats, setStats] = useState({
         totalCustomers: 0,
-        totalPoints: 0,
+        newMembers: 0,
+        totalIssued: 0,
+        totalRedeemed: 0,
+        burnRate: 0,
+        redemptionCount: 0,
         activeBranches: 0,
-        recentActivity: [
-            { name: 'Mon', points: 400 },
-            { name: 'Tue', points: 300 },
-            { name: 'Wed', points: 600 },
-            { name: 'Thu', points: 800 },
-            { name: 'Fri', points: 500 },
-            { name: 'Sat', points: 900 },
-            { name: 'Sun', points: 700 },
-        ]
     });
+    const [chartData, setChartData] = useState([]);
     const [loading, setLoading] = useState(true);
 
+
     useEffect(() => {
-        fetchStats();
+        fetchInitialData();
     }, []);
+
+    useEffect(() => {
+        if (branches.length > 0 || selectedBranchId === 'all') {
+            fetchStats();
+        }
+    }, [selectedBranchId]);
+
+    const fetchInitialData = async () => {
+        try {
+            const merchantId = await store.getMerchantId();
+            if (!merchantId) return;
+
+            const { data: branchesData } = await supabase
+                .from('branches')
+                .select('*')
+                .eq('merchant_id', merchantId)
+                .order('name');
+
+            setBranches(branchesData || []);
+            fetchStats();
+        } catch (error) {
+            console.error("Error fetching initial data:", error);
+        }
+    };
 
     const fetchStats = async () => {
         try {
@@ -35,93 +62,260 @@ const MerchantDashboard = () => {
             const merchantId = await store.getMerchantId();
             if (!merchantId) return;
 
+            // 1. Fetch Customers
             const { count: customerCount } = await supabase
                 .from('customers')
                 .select('*', { count: 'exact', head: true })
                 .eq('merchant_id', merchantId);
 
-            const { data: transData } = await supabase
-                .from('transactions')
-                .select('amount')
-                .eq('merchant_id', merchantId)
-                .eq('type', 'add');
+            const thirtyDaysAgo = new Date();
+            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-            const totalPoints = (transData && transData.reduce) ? transData.reduce((acc, curr) => acc + curr.amount, 0) : 0;
-
-            const { count: branchCount } = await supabase
-                .from('branches')
+            const { count: newMemberCount } = await supabase
+                .from('customers')
                 .select('*', { count: 'exact', head: true })
                 .eq('merchant_id', merchantId)
-                .eq('is_active', true);
+                .gte('created_at', thirtyDaysAgo.toISOString());
 
-            setStats(prev => ({
-                ...prev,
-                totalCustomers: customerCount || 0,
-                totalPoints: totalPoints,
-                activeBranches: branchCount || 0,
+            // 2. Transactions Query
+            let query = supabase
+                .from('transactions')
+                .select(`*, branches (name), customers (phone)`)
+                .eq('merchant_id', merchantId)
+                .order('created_at', { ascending: false });
+
+            if (selectedBranchId !== 'all') {
+                query = query.eq('branch_id', selectedBranchId);
+            }
+
+            const { data: transData, error } = await query;
+            if (error) throw error;
+
+            setTransactions(transData || []);
+
+            // 3. Stats Calculation
+            let issued = 0;
+            let redeemed = 0;
+            let redemptions = 0;
+            const dailyMap = {};
+            const today = new Date();
+
+            // Initialize last 7 days chart keys
+            for (let i = 6; i >= 0; i--) {
+                const d = new Date(today);
+                d.setDate(d.getDate() - i);
+                const dateStr = d.toLocaleDateString('en-US', { weekday: 'short' });
+                dailyMap[dateStr] = 0;
+            }
+
+            transData.forEach(t => {
+                const amt = t.amount || 0;
+                if (t.type === 'add') {
+                    issued += amt;
+
+                    const tDate = new Date(t.created_at);
+                    const diffTime = Math.abs(today - tDate);
+                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                    if (diffDays <= 7) {
+                        const dayName = tDate.toLocaleDateString('en-US', { weekday: 'short' });
+                        if (dailyMap[dayName] !== undefined) {
+                            dailyMap[dayName] += amt;
+                        }
+                    }
+                } else if (t.type === 'redeem') {
+                    redeemed += amt;
+                    redemptions += 1;
+                }
+            });
+
+            const burnRate = issued > 0 ? ((redeemed / issued) * 100).toFixed(1) : 0;
+            const chartDataArray = Object.keys(dailyMap).map(key => ({
+                name: key,
+                points: dailyMap[key]
             }));
+
+            setStats({
+                totalCustomers: customerCount || 0,
+                newMembers: newMemberCount || 0,
+                totalIssued: issued,
+                totalRedeemed: redeemed,
+                burnRate: burnRate,
+                redemptionCount: redemptions,
+                activeBranches: branches.length
+            });
+            setChartData(chartDataArray);
+
         } catch (error) {
-            console.error("Error fetching dashboard stats:", error);
+            console.error("Error fetching stats:", error);
         } finally {
             setLoading(false);
         }
     };
 
+    // Derived Data for Tables
+    const memberRankings = useMemo(() => {
+        const map = {};
+        transactions.forEach(t => {
+            if (!map[t.customer_id]) {
+                map[t.customer_id] = {
+                    id: t.customer_id,
+                    phone: t.customers?.phone || 'Unknown',
+                    points: 0,
+                    lastSeen: t.created_at,
+                    txns: 0
+                };
+            }
+            if (t.type === 'add') map[t.customer_id].points += t.amount;
+            else if (t.type === 'redeem') map[t.customer_id].points -= t.amount; // Should we subtract? Usually rankings are based on specific metric. Let's do "Total Accumulated" for ranking, not balance.
+
+            // Re-read plan: "Member Rankings -> Total Accumulated Points"
+            // So if type is add, increase. If redeem, ignore for "Accumulated"? 
+            // Plan says: "Total Accumulated Points" and "Current Remaining Points".
+            // Since we don't have current remaining points in transaction stream clearly (it's stateful), we can only approx. 
+            // OR we assume transaction history is complete. 
+            // Let's just sum 'add' for "Total Accumulated".
+            if (t.type === 'add') map[t.customer_id].accumulated = (map[t.customer_id].accumulated || 0) + t.amount;
+
+            map[t.customer_id].txns += 1;
+            if (new Date(t.created_at) > new Date(map[t.customer_id].lastSeen)) {
+                map[t.customer_id].lastSeen = t.created_at;
+            }
+        });
+        return Object.values(map).sort((a, b) => (b.accumulated || 0) - (a.accumulated || 0)).slice(0, 50);
+    }, [transactions]);
+
+    const branchSummary = useMemo(() => {
+        if (selectedBranchId !== 'all') return [];
+        const map = {};
+        transactions.forEach(t => {
+            const bid = t.branch_id || 'unknown';
+            const bName = t.branches?.name || 'Unknown';
+            if (!map[bid]) map[bid] = { name: bName, issued: 0, redeemed: 0, txns: 0, members: new Set() };
+
+            if (t.type === 'add') map[bid].issued += t.amount;
+            else if (t.type === 'redeem') map[bid].redeemed += t.amount;
+            map[bid].txns += 1;
+            map[bid].members.add(t.customer_id);
+        });
+        return Object.values(map).map(b => ({ ...b, uniqueMembers: b.members.size }));
+    }, [transactions, selectedBranchId]);
+
+
+
+    // CSV Download
+    const downloadCSV = (data, filename) => {
+        if (!data || !data.length) return;
+        const headers = Object.keys(data[0]).join(',');
+        const rows = data.map(row =>
+            Object.values(row).map(val =>
+                typeof val === 'string' ? `"${val.replace(/"/g, '""')}"` : val
+            ).join(',')
+        ).join('\n');
+
+        const blob = new Blob([`\uFEFF${headers}\n${rows}`], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `${filename}.csv`;
+        link.click();
+    };
+
+    const handleExport = (type) => {
+        const dateStr = new Date().toISOString().slice(0, 10);
+        if (type === 'transactions') {
+            const data = transactions.map(t => ({
+                Time: new Date(t.created_at).toLocaleString('zh-TW'),
+                Branch: t.branches?.name || '-',
+                CustomerPhone: t.customers?.phone || '-',
+                Type: t.type,
+                Amount: t.amount
+            }));
+            downloadCSV(data, `transactions_${dateStr}`);
+        } else if (type === 'members') {
+            const data = memberRankings.map(m => ({
+                CustomerPhone: m.phone || '-',
+                TotalAccumulated: m.accumulated || 0,
+                LastSeen: new Date(m.lastSeen).toLocaleString('zh-TW'),
+                TxnCount: m.txns
+            }));
+            downloadCSV(data, `member_rankings_${dateStr}`);
+        } else if (type === 'branches') {
+            const data = branchSummary.map(b => ({
+                Branch: b.name,
+                Issued: b.issued,
+                Redeemed: b.redeemed,
+                UniqueMembers: b.uniqueMembers,
+                TxnCount: b.txns
+            }));
+            downloadCSV(data, `branch_summary_${dateStr}`);
+        }
+    };
+
     const statCards = [
-        { title: '總會員人數', value: stats.totalCustomers, icon: Users, color: 'text-teal-600', bg: 'bg-teal-50', growth: '+12.4%' },
-        { title: '累積發放點數', value: stats.totalPoints.toLocaleString(), icon: CreditCard, color: 'text-cyan-600', bg: 'bg-cyan-50', growth: '+8.2%' },
-        { title: '營運分店數', value: stats.activeBranches, icon: Store, color: 'text-indigo-600', bg: 'bg-indigo-50', growth: '+0%' },
+        { title: '會員總數', value: stats.totalCustomers, subValue: `近30日 +${stats.newMembers}`, icon: Users, color: 'text-teal-600', bg: 'bg-teal-50' },
+        { title: '點數發放', value: stats.totalIssued.toLocaleString(), subValue: 'Lifetime Issued', icon: CreditCard, color: 'text-cyan-600', bg: 'bg-cyan-50' },
+        { title: '點數兌換', value: stats.totalRedeemed.toLocaleString(), subValue: `${stats.redemptionCount} 次兌換`, icon: Sparkles, color: 'text-purple-600', bg: 'bg-purple-50' },
+        { title: '流通率', value: `${stats.burnRate}%`, subValue: 'Health Score', icon: TrendingUp, color: 'text-orange-600', bg: 'bg-orange-50' },
     ];
 
-    if (loading) return (
+    if (loading && transactions.length === 0) return (
         <div className="h-full flex flex-col items-center justify-center py-24">
             <div className="w-12 h-12 border-4 border-teal-600 border-t-transparent rounded-full animate-spin mb-4"></div>
-            <p className="text-slate-400 font-bold uppercase tracking-widest text-xs">大數據分析中...</p>
+            <p className="text-slate-400 font-bold uppercase tracking-widest text-xs">載入營運數據...</p>
         </div>
     );
 
     return (
-        <div className="space-y-12 animate-in fade-in duration-700">
-            {/* Header Section */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-8">
+        <div className="space-y-10 animate-in fade-in duration-700 pb-20">
+            {/* Header */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                 <div>
                     <div className="flex items-center gap-3 mb-2">
                         <div className="w-12 h-12 bg-gradient-to-br from-teal-500 to-cyan-600 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-teal-500/20">
-                            <Sparkles className="w-7 h-7" />
+                            <LayoutDashboard className="w-6 h-6" />
                         </div>
                         <h2 className="text-4xl font-black tracking-tighter text-slate-900">營運指揮中心</h2>
                     </div>
-                    <p className="text-slate-500 font-medium ml-1 text-lg">掌握您的忠誠度計畫執行成效與顧客成長動態。</p>
+                    <p className="text-slate-500 font-medium ml-1 text-lg">全方位掌握會員成長與點數經濟脈動。</p>
                 </div>
-                <Button
-                    onClick={() => navigate('/terminal')}
-                    className="button-premium h-16 px-10 rounded-2xl text-lg shadow-xl shadow-teal-600/20 flex items-center gap-4 group"
-                >
-                    <Monitor className="h-6 w-6 group-hover:scale-110 transition-transform" />
-                    <span>啟動集點終端</span>
-                </Button>
+                <div className="flex items-center gap-4">
+                    <div className="flex bg-white rounded-xl shadow-sm border border-slate-200 p-1">
+                        <Select value={selectedBranchId} onValueChange={setSelectedBranchId}>
+                            <SelectTrigger className="w-[200px] border-none shadow-none h-12 text-slate-700 font-bold text-base focus:ring-0">
+                                <Store className="w-5 h-5 mr-2 text-slate-400" />
+                                <SelectValue placeholder="選擇分店" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">所有分店 (All Branches)</SelectItem>
+                                {branches.map(b => (
+                                    <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <Button onClick={() => navigate('/terminal')} className="button-premium h-14 px-8 rounded-xl text-lg shadow-lg shadow-teal-600/20 flex items-center gap-3 group">
+                        <Monitor className="h-5 w-5 group-hover:scale-110 transition-transform" />
+                        <span>開啟終端</span>
+                    </Button>
+                </div>
             </div>
 
-            {/* Quick Stats Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {/* Stat Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
                 {statCards.map((card, i) => (
-                    <Card key={i} className="border-none shadow-soft-lg p-10 rounded-[2.5rem] bg-white group relative overflow-hidden transition-all hover:shadow-soft-2xl active:scale-[0.98]">
-                        <div className={`absolute top-0 right-0 w-32 h-32 ${card.bg} rounded-bl-full -mr-12 -mt-12 transition-all duration-700 group-hover:scale-150 opacity-40`} />
-
-                        <div className="flex flex-col relative z-10">
-                            <div className="flex items-center justify-between mb-8">
-                                <div className={`${card.bg} p-4 rounded-2xl`}>
-                                    <card.icon className={`h-8 w-8 ${card.color}`} />
-                                </div>
-                                <div className="text-emerald-500 font-black text-sm flex items-center gap-1 bg-emerald-50 px-3 py-1.5 rounded-full">
-                                    <TrendingUp className="w-4 h-4" /> {card.growth}
+                    <Card key={i} className="border-none shadow-soft-lg p-6 rounded-[2rem] bg-white group relative overflow-hidden hover:shadow-soft-2xl transition-all">
+                        <div className={`absolute top-0 right-0 w-24 h-24 ${card.bg} rounded-bl-full -mr-8 -mt-8 transition-transform duration-500 group-hover:scale-125 opacity-50`} />
+                        <div className="flex flex-col relative z-10 h-full justify-between">
+                            <div className="flex items-center justify-between mb-4">
+                                <div className={`${card.bg} p-3 rounded-2xl`}>
+                                    <card.icon className={`h-6 w-6 ${card.color}`} />
                                 </div>
                             </div>
-
-                            <div className="space-y-1">
-                                <h3 className="text-slate-400 font-black text-xs uppercase tracking-[0.2em]">{card.title}</h3>
-                                <div className="text-6xl font-black text-slate-900 tracking-tighter tabular-nums leading-tight">
-                                    {card.value}
+                            <div>
+                                <h3 className="text-slate-400 font-bold text-xs uppercase tracking-widest mb-1">{card.title}</h3>
+                                <div className="text-3xl font-black text-slate-900 tracking-tight tabular-nums">{card.value}</div>
+                                <div className="text-xs font-bold text-slate-400 mt-2 flex items-center gap-1">
+                                    <ArrowUpRight className="w-3 h-3 text-emerald-500" />
+                                    {card.subValue}
                                 </div>
                             </div>
                         </div>
@@ -129,130 +323,197 @@ const MerchantDashboard = () => {
                 ))}
             </div>
 
-            {/* Charts & Goals Grid */}
-            <div className="grid grid-cols-1 xl:grid-cols-12 gap-10">
-                {/* Main Activity Chart */}
-                <Card className="xl:col-span-8 border-none shadow-soft-lg rounded-[3rem] bg-white overflow-hidden flex flex-col">
-                    <div className="p-10 border-b border-slate-50 flex items-center justify-between bg-slate-50/20">
-                        <div className="flex items-center gap-4">
-                            <div className="w-10 h-10 bg-teal-100 text-teal-600 rounded-xl flex items-center justify-center">
-                                <TrendingUp className="w-6 h-6" />
+            {/* Charts Section */}
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+                <Card className="xl:col-span-2 border-none shadow-soft-lg rounded-[2.5rem] bg-white overflow-hidden flex flex-col h-[450px]">
+                    <div className="p-8 border-b border-slate-50 flex items-center justify-between bg-slate-50/30">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-teal-50 text-teal-600 rounded-xl flex items-center justify-center">
+                                <TrendingUp className="w-5 h-5" />
                             </div>
-                            <h3 className="text-2xl font-black text-slate-900 tracking-tight">點數發放趨勢</h3>
-                        </div>
-                        <div className="flex gap-2">
-                            <div className="px-5 py-2 bg-white rounded-xl shadow-sm text-xs font-black text-slate-600 border border-slate-100">近 7 日數據</div>
+                            <div>
+                                <h3 className="text-xl font-black text-slate-900">點數發放趨勢</h3>
+                                <p className="text-slate-400 text-xs font-bold uppercase tracking-wider">Recent 7 Days Activity</p>
+                            </div>
                         </div>
                     </div>
-                    <CardContent className="p-10 flex-1 h-[450px]">
+                    <CardContent className="p-6 flex-1">
                         <ResponsiveContainer width="100%" height="100%">
-                            <AreaChart data={stats.recentActivity}>
+                            <AreaChart data={chartData}>
                                 <defs>
                                     <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#0d9488" stopOpacity={0.25} />
+                                        <stop offset="5%" stopColor="#0d9488" stopOpacity={0.2} />
                                         <stop offset="95%" stopColor="#0d9488" stopOpacity={0} />
                                     </linearGradient>
                                 </defs>
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                                <XAxis
-                                    dataKey="name"
-                                    axisLine={false}
-                                    tickLine={false}
-                                    tick={{ fill: '#94a3b8', fontSize: 13, fontWeight: 700 }}
-                                    dy={15}
-                                />
-                                <YAxis
-                                    axisLine={false}
-                                    tickLine={false}
-                                    tick={{ fill: '#94a3b8', fontSize: 13, fontWeight: 700 }}
-                                    dx={-15}
-                                />
-                                <Tooltip
-                                    cursor={{ stroke: '#0d9488', strokeWidth: 2, strokeDasharray: '6 6' }}
-                                    contentStyle={{
-                                        borderRadius: '24px',
-                                        border: 'none',
-                                        boxShadow: '0 25px 50px -12px rgb(0 0 0 / 0.15)',
-                                        padding: '20px',
-                                        background: 'rgba(255, 255, 255, 0.95)',
-                                        backdropFilter: 'blur(10px)'
-                                    }}
-                                    itemStyle={{ color: '#0f172a', fontWeight: 900, fontSize: '18px' }}
-                                    labelStyle={{ color: '#64748b', fontWeight: 700, marginBottom: '8px', fontSize: '14px' }}
-                                />
-                                <Area
-                                    type="monotone"
-                                    dataKey="points"
-                                    stroke="#0d9488"
-                                    strokeWidth={6}
-                                    fillOpacity={1}
-                                    fill="url(#chartGradient)"
-                                    animationDuration={2000}
-                                />
+                                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 12, fontWeight: 600 }} dy={10} />
+                                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 12, fontWeight: 600 }} />
+                                <Tooltip cursor={{ stroke: '#0d9488', strokeWidth: 2, strokeDasharray: '4 4' }} contentStyle={{ borderRadius: '16px', border: 'none', padding: '16px', boxShadow: '0 10px 30px -10px rgba(0,0,0,0.1)' }} />
+                                <Area type="monotone" dataKey="points" stroke="#0d9488" strokeWidth={4} fill="url(#chartGradient)" animationDuration={1500} />
                             </AreaChart>
                         </ResponsiveContainer>
                     </CardContent>
                 </Card>
 
-                {/* Performance Goals */}
-                <Card className="xl:col-span-4 border-none shadow-soft-lg rounded-[3rem] bg-white flex flex-col relative overflow-hidden">
-                    <div className="absolute top-0 right-0 w-64 h-64 bg-teal-500/5 rounded-full blur-[80px] -mr-32 -mt-32" />
-
-                    <CardHeader className="p-10 pb-0 relative z-10">
-                        <div className="flex items-center gap-4 mb-2">
-                            <div className="w-10 h-10 bg-teal-50 rounded-xl flex items-center justify-center text-teal-600 border border-teal-100/50">
-                                <Target className="w-6 h-6" />
-                            </div>
-                            <CardTitle className="text-2xl font-black text-slate-900">績效目標進度</CardTitle>
-                        </div>
-                    </CardHeader>
-
-                    <CardContent className="p-10 pt-4 flex flex-col items-center flex-1 justify-center relative z-10 text-center">
-                        <div className="relative w-64 h-64 flex items-center justify-center mb-10 group">
-                            <div className="absolute inset-0 bg-teal-500/5 rounded-full blur-2xl group-hover:bg-teal-500/10 transition-colors duration-700" />
-                            <svg className="w-full h-full transform -rotate-90">
-                                <circle cx="128" cy="128" r="110" stroke="#f1f5f9" strokeWidth="18" fill="transparent" />
-                                <circle
-                                    cx="128"
-                                    cy="128"
-                                    r="110"
-                                    stroke="#0d9488"
-                                    strokeWidth="18"
-                                    fill="transparent"
-                                    strokeDasharray={2 * Math.PI * 110}
-                                    strokeDashoffset={2 * Math.PI * 110 * (1 - 0.75)}
-                                    strokeLinecap="round"
-                                    className="drop-shadow-[0_4px_12px_rgba(13,148,136,0.2)]"
-                                />
-                            </svg>
-                            <div className="absolute inset-0 flex flex-col items-center justify-center">
-                                <span className="text-7xl font-black text-slate-900 tracking-tighter">75</span>
-                                <span className="text-sm font-black text-teal-600 uppercase tracking-widest mt-1">PERCENT</span>
-                            </div>
-                        </div>
-
-                        <div className="space-y-6 w-full px-4">
-                            <div className="space-y-2">
-                                <div className="flex justify-between text-xs font-black uppercase tracking-widest text-slate-400">
-                                    <span>Monthly Goal</span>
-                                    <span className="text-slate-900">50,000 PTS</span>
+                {/* Insight Card */}
+                <Card className="xl:col-span-1 border-none shadow-soft-lg rounded-[2.5rem] bg-slate-900 text-white overflow-hidden flex flex-col relative">
+                    <div className="absolute top-0 right-0 w-64 h-64 bg-teal-500/20 rounded-full blur-3xl -mr-16 -mt-16" />
+                    <div className="p-8 relative z-10 flex flex-col h-full justify-between">
+                        <div>
+                            <div className="flex items-center gap-3 mb-8">
+                                <div className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center backdrop-blur-md">
+                                    <Sparkles className="w-5 h-5 text-teal-300" />
                                 </div>
-                                <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden shadow-inner">
-                                    <div className="h-full bg-teal-500 w-[75%] rounded-full" />
+                                <div>
+                                    <h3 className="text-xl font-black">營運洞察</h3>
+                                    <p className="text-slate-400 text-xs font-bold uppercase tracking-wider">Key Insights</p>
                                 </div>
                             </div>
-                            <p className="text-slate-500 font-bold text-sm leading-relaxed">
-                                目前已發放發放 37,500 點，<br />
-                                預計本月達成率可達 102%。
-                            </p>
+                            <div className="space-y-6">
+                                <div className="bg-white/5 p-5 rounded-3xl border border-white/10">
+                                    <div className="text-slate-400 text-xs font-bold uppercase mb-2">Most Active</div>
+                                    <div className="text-2xl font-black text-white mb-1">
+                                        {memberRankings.length > 0 ? memberRankings[0].phone : '-'}
+                                    </div>
+                                    <div className="text-teal-400 text-sm font-bold">
+                                        Top Spender (Accumulated)
+                                    </div>
+                                </div>
+                                <div className="bg-white/5 p-5 rounded-3xl border border-white/10">
+                                    <div className="text-slate-400 text-xs font-bold uppercase mb-2">Avg. Transaction</div>
+                                    <div className="text-2xl font-black text-white mb-1">
+                                        {transactions.length > 0 ? (stats.totalIssued / transactions.filter(t => t.type === 'add').length).toFixed(0) : 0} <span className="text-sm text-slate-400">PTS</span>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-
-                        <Button variant="ghost" className="w-full mt-12 h-16 rounded-[2rem] text-teal-600 font-black hover:bg-teal-50 group border border-teal-100/50 transition-all">
-                            發送報表至 Email <ChevronRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-2" />
-                        </Button>
-                    </CardContent>
+                    </div>
                 </Card>
             </div>
+
+            {/* Data Tables Tabs */}
+            <Card className="border-none shadow-soft-lg rounded-[2.5rem] bg-white overflow-hidden p-8">
+                <Tabs defaultValue="transactions" className="w-full">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                        <TabsList className="bg-slate-100 p-1 h-14 rounded-2xl w-full md:w-auto">
+                            <TabsTrigger value="transactions" className="h-12 rounded-xl px-6 font-bold text-slate-600 data-[state=active]:bg-white data-[state=active]:text-teal-600 data-[state=active]:shadow-sm">
+                                最近交易
+                            </TabsTrigger>
+                            <TabsTrigger value="members" className="h-12 rounded-xl px-6 font-bold text-slate-600 data-[state=active]:bg-white data-[state=active]:text-teal-600 data-[state=active]:shadow-sm">
+                                會員排行
+                            </TabsTrigger>
+                            {selectedBranchId === 'all' && (
+                                <TabsTrigger value="branches" className="h-12 rounded-xl px-6 font-bold text-slate-600 data-[state=active]:bg-white data-[state=active]:text-teal-600 data-[state=active]:shadow-sm">
+                                    分店報表
+                                </TabsTrigger>
+                            )}
+                        </TabsList>
+
+                        <div className="flex gap-2">
+                            <Button variant="outline" onClick={() => handleExport('transactions')} className="rounded-xl border-slate-200 hover:bg-slate-50 text-slate-600 font-bold gap-2">
+                                <Download className="w-4 h-4" /> 匯出交易
+                            </Button>
+                        </div>
+                    </div>
+
+                    <TabsContent value="transactions" className="mt-0">
+                        <Table>
+                            <TableHeader>
+                                <TableRow className="hover:bg-slate-50/50 border-slate-100">
+                                    <TableHead className="font-black text-slate-900 pl-4">時間</TableHead>
+                                    <TableHead className="font-black text-slate-900">分店</TableHead>
+                                    <TableHead className="font-black text-slate-900">顧客手機</TableHead>
+                                    <TableHead className="font-black text-slate-900">類型</TableHead>
+                                    <TableHead className="font-black text-slate-900 text-right pr-4">點數</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {transactions.slice(0, 10).map((t) => (
+                                    <TableRow key={t.id} className="hover:bg-slate-50/80 border-slate-50">
+                                        <TableCell className="pl-4 font-medium text-slate-600">{new Date(t.created_at).toLocaleString('zh-TW', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</TableCell>
+                                        <TableCell className="font-bold text-slate-800">{t.branches?.name || '-'}</TableCell>
+                                        <TableCell className="font-mono font-bold text-slate-600">{t.customers?.phone || '-'}</TableCell>
+                                        <TableCell>
+                                            <span className={`px-3 py-1 rounded-full text-xs font-black ${t.type === 'add' ? 'bg-teal-50 text-teal-600' : 'bg-purple-50 text-purple-600'}`}>
+                                                {t.type === 'add' ? '發放' : '兌換'}
+                                            </span>
+                                        </TableCell>
+                                        <TableCell className="text-right pr-4 font-black tabular-nums text-slate-900">
+                                            {t.type === 'add' ? '+' : '-'}{t.amount}
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                                {transactions.length === 0 && <TableRow><TableCell colSpan={5} className="h-32 text-center text-slate-400 font-bold">尚無交易紀錄</TableCell></TableRow>}
+                            </TableBody>
+                        </Table>
+                    </TabsContent>
+
+                    <TabsContent value="members" className="mt-0">
+                        <div className="flex justify-end mb-4">
+                            <Button variant="outline" size="sm" onClick={() => handleExport('members')} className="rounded-lg border-slate-200 text-xs font-bold gap-2">
+                                <Download className="w-3 h-3" /> 匯出榜單
+                            </Button>
+                        </div>
+                        <Table>
+                            <TableHeader>
+                                <TableRow className="hover:bg-slate-50/50 border-slate-100">
+                                    <TableHead className="font-black text-slate-900 pl-4">排名</TableHead>
+                                    <TableHead className="font-black text-slate-900">顧客手機</TableHead>
+                                    <TableHead className="font-black text-slate-900 text-right">累積獲得點數</TableHead>
+                                    <TableHead className="font-black text-slate-900 text-right">交易次數</TableHead>
+                                    <TableHead className="font-black text-slate-900 text-right pr-4">最後互動</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {memberRankings.map((m, idx) => (
+                                    <TableRow key={m.id} className="hover:bg-slate-50/80 border-slate-50">
+                                        <TableCell className="pl-4 font-black text-slate-400">#{idx + 1}</TableCell>
+                                        <TableCell className="font-mono font-bold text-slate-600">{m.phone}</TableCell>
+                                        <TableCell className="text-right font-black text-teal-600">{m.accumulated?.toLocaleString()}</TableCell>
+                                        <TableCell className="text-right font-bold text-slate-700">{m.txns}</TableCell>
+                                        <TableCell className="text-right pr-4 text-xs font-bold text-slate-400">{new Date(m.lastSeen).toLocaleDateString()}</TableCell>
+                                    </TableRow>
+                                ))}
+                                {memberRankings.length === 0 && <TableRow><TableCell colSpan={5} className="h-32 text-center text-slate-400 font-bold">尚無會員資料</TableCell></TableRow>}
+                            </TableBody>
+                        </Table>
+                    </TabsContent>
+
+                    {selectedBranchId === 'all' && (
+                        <TabsContent value="branches" className="mt-0">
+                            <div className="flex justify-end mb-4">
+                                <Button variant="outline" size="sm" onClick={() => handleExport('branches')} className="rounded-lg border-slate-200 text-xs font-bold gap-2">
+                                    <Download className="w-3 h-3" /> 匯出報表
+                                </Button>
+                            </div>
+                            <Table>
+                                <TableHeader>
+                                    <TableRow className="hover:bg-slate-50/50 border-slate-100">
+                                        <TableHead className="font-black text-slate-900 pl-4">分店名稱</TableHead>
+                                        <TableHead className="font-black text-slate-900 text-right">發放點數</TableHead>
+                                        <TableHead className="font-black text-slate-900 text-right">兌換點數</TableHead>
+                                        <TableHead className="font-black text-slate-900 text-right">不重複客數</TableHead>
+                                        <TableHead className="font-black text-slate-900 text-right pr-4">總交易量</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {branchSummary.map((b, idx) => (
+                                        <TableRow key={idx} className="hover:bg-slate-50/80 border-slate-50">
+                                            <TableCell className="pl-4 font-bold text-slate-800">{b.name}</TableCell>
+                                            <TableCell className="text-right font-black text-teal-600">{b.issued.toLocaleString()}</TableCell>
+                                            <TableCell className="text-right font-black text-purple-600">{b.redeemed.toLocaleString()}</TableCell>
+                                            <TableCell className="text-right font-bold text-slate-700">{b.uniqueMembers}</TableCell>
+                                            <TableCell className="text-right pr-4 font-bold text-slate-700">{b.txns}</TableCell>
+                                        </TableRow>
+                                    ))}
+                                    {branchSummary.length === 0 && <TableRow><TableCell colSpan={5} className="h-32 text-center text-slate-400 font-bold">尚無分店資料</TableCell></TableRow>}
+                                </TableBody>
+                            </Table>
+                        </TabsContent>
+                    )}
+                </Tabs>
+            </Card>
         </div>
     );
 };
