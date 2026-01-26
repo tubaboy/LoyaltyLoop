@@ -4,8 +4,8 @@ import legacy from "@vitejs/plugin-legacy"
 import { defineConfig } from "vite"
 
 export default defineConfig({
-  // Use root for Vercel or local dev, use project name for GitHub Pages
-  base: process.env.VERCEL ? "/" : "/LoyaltyLoop/",
+  // Use root for Vercel, Netlify or local dev, use project name for GitHub Pages
+  base: (process.env.VERCEL || process.env.NETLIFY) ? "/" : "/LoyaltyLoop/",
   plugins: [
     react(),
     legacy({
