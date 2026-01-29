@@ -6,13 +6,18 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
-import { Users, Store, CreditCard, LayoutDashboard, ChevronRight, Target, TrendingUp, Sparkles, Monitor, Download, ArrowUpRight, ArrowDownLeft, FileText, Trophy, BarChart3 } from 'lucide-react';
+import { Users, Store, CreditCard, LayoutDashboard, ChevronRight, Target, TrendingUp, Sparkles, Monitor, Download, ArrowUpRight, ArrowDownLeft, FileText, Trophy, BarChart3, Calendar } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { store } from '../../lib/store';
 
 const MerchantDashboard = () => {
     const navigate = useNavigate();
     const [selectedBranchId, setSelectedBranchId] = useState('all');
+    const [dateFilter, setDateFilter] = useState('month'); // today, week, month, custom
+    const [customRange, setCustomRange] = useState({
+        start: new Date().toISOString().split('T')[0],
+        end: new Date().toISOString().split('T')[0]
+    });
     const [branches, setBranches] = useState([]);
     const [transactions, setTransactions] = useState([]);
     const [stats, setStats] = useState({
@@ -36,7 +41,7 @@ const MerchantDashboard = () => {
         if (branches.length > 0 || selectedBranchId === 'all') {
             fetchStats();
         }
-    }, [selectedBranchId]);
+    }, [selectedBranchId, dateFilter, customRange]);
 
     const fetchInitialData = async () => {
         try {
@@ -62,27 +67,60 @@ const MerchantDashboard = () => {
             const merchantId = await store.getMerchantId();
             if (!merchantId) return;
 
-            // 1. Fetch Customers
+            // 1. Calculate Date Range
+            const now = new Date();
+            let startDate = new Date();
+            let endDate = new Date();
+
+            if (dateFilter === 'today') {
+                startDate.setHours(0, 0, 0, 0);
+                endDate.setHours(23, 59, 59, 999);
+            } else if (dateFilter === 'week') {
+                // This week (Monday to Now)
+                const day = now.getDay();
+                const diff = now.getDate() - day + (day === 0 ? -6 : 1); // adjust when day is sunday
+                startDate.setDate(diff);
+                startDate.setHours(0, 0, 0, 0);
+                endDate = now;
+            } else if (dateFilter === 'month') {
+                // This month (1st to Now)
+                startDate.setDate(1);
+                startDate.setHours(0, 0, 0, 0);
+                endDate = now;
+            } else if (dateFilter === 'custom') {
+                startDate = new Date(customRange.start);
+                startDate.setHours(0, 0, 0, 0);
+                endDate = new Date(customRange.end);
+                endDate.setHours(23, 59, 59, 999);
+            }
+
+            // ISO Strings for Queries
+            const startISO = startDate.toISOString();
+            const endISO = endDate.toISOString();
+
+            // 2. Fetch Stats
             const { count: customerCount } = await supabase
                 .from('customers')
                 .select('*', { count: 'exact', head: true })
                 .eq('merchant_id', merchantId);
 
-            const thirtyDaysAgo = new Date();
-            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
+            // New Members (in selected range)
             const { count: newMemberCount } = await supabase
                 .from('customers')
                 .select('*', { count: 'exact', head: true })
                 .eq('merchant_id', merchantId)
-                .gte('created_at', thirtyDaysAgo.toISOString());
+                .gte('created_at', startISO)
+                .lte('created_at', endISO);
 
-            // 2. Transactions Query
+            // 3. Transactions Query
             let query = supabase
                 .from('transactions')
                 .select(`*, branches (name), customers (phone)`)
                 .eq('merchant_id', merchantId)
-                .order('created_at', { ascending: false });
+                .gte('created_at', startISO)
+                .lte('created_at', endISO)
+                .order('created_at', { ascending: false })
+                .limit(5); // Only fetch 5 for dashboard overview
 
             if (selectedBranchId !== 'all') {
                 query = query.eq('branch_id', selectedBranchId);
@@ -93,19 +131,31 @@ const MerchantDashboard = () => {
 
             setTransactions(transData || []);
 
-            // 3. Stats Calculation
+            // 4. Stats Calculation
             let issued = 0;
             let redeemed = 0;
             let redemptions = 0;
             const dailyMap = {};
-            const today = new Date();
 
-            // Initialize last 7 days chart keys
-            for (let i = 6; i >= 0; i--) {
-                const d = new Date(today);
-                d.setDate(d.getDate() - i);
-                const dateStr = d.toLocaleDateString('en-US', { weekday: 'short' });
-                dailyMap[dateStr] = 0;
+            // Initialize Chart Keys
+            // If range is 'today', break down by hour, otherwise by day
+            const isToday = dateFilter === 'today' || (dateFilter === 'custom' && customRange.start === customRange.end);
+
+            if (isToday) {
+                // Hourly keys 00-23
+                for (let i = 0; i < 24; i++) {
+                    const hourStr = `${i.toString().padStart(2, '0')}:00`;
+                    dailyMap[hourStr] = 0;
+                }
+            } else {
+                // Daily keys loop from start to end
+                const loopDate = new Date(startDate);
+                while (loopDate <= endDate) {
+                    const dateStr = loopDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                    // Only add if not already present (handling potential duplicates if logic is weird, but Date increments safely)
+                    if (dailyMap[dateStr] === undefined) dailyMap[dateStr] = 0;
+                    loopDate.setDate(loopDate.getDate() + 1);
+                }
             }
 
             transData.forEach(t => {
@@ -114,13 +164,15 @@ const MerchantDashboard = () => {
                     issued += amt;
 
                     const tDate = new Date(t.created_at);
-                    const diffTime = Math.abs(today - tDate);
-                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                    if (diffDays <= 7) {
-                        const dayName = tDate.toLocaleDateString('en-US', { weekday: 'short' });
-                        if (dailyMap[dayName] !== undefined) {
-                            dailyMap[dayName] += amt;
-                        }
+                    let key;
+                    if (isToday) {
+                        key = `${tDate.getHours().toString().padStart(2, '0')}:00`;
+                    } else {
+                        key = tDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                    }
+
+                    if (dailyMap[key] !== undefined) {
+                        dailyMap[key] += amt;
                     }
                 } else if (t.type === 'redeem') {
                     redeemed += amt;
@@ -221,16 +273,7 @@ const MerchantDashboard = () => {
 
     const handleExport = (type) => {
         const dateStr = new Date().toISOString().slice(0, 10);
-        if (type === 'transactions') {
-            const data = transactions.map(t => ({
-                Time: new Date(t.created_at).toLocaleString('zh-TW'),
-                Branch: t.branches?.name || '-',
-                CustomerPhone: t.customers?.phone || '-',
-                Type: t.type,
-                Amount: t.amount
-            }));
-            downloadCSV(data, `transactions_${dateStr}`);
-        } else if (type === 'members') {
+        if (type === 'members') {
             const data = memberRankings.map(m => ({
                 CustomerPhone: m.phone || '-',
                 TotalAccumulated: m.accumulated || 0,
@@ -251,7 +294,7 @@ const MerchantDashboard = () => {
     };
 
     const statCards = [
-        { title: '會員總數', value: stats.totalCustomers, subValue: `近30日 +${stats.newMembers}`, icon: Users, color: 'text-teal-600', bg: 'bg-teal-50' },
+        { title: '會員總數', value: stats.totalCustomers, subValue: `所選區間新增 +${stats.newMembers}`, icon: Users, color: 'text-teal-600', bg: 'bg-teal-50' },
         { title: '點數發放', value: stats.totalIssued.toLocaleString(), subValue: 'Lifetime Issued', icon: CreditCard, color: 'text-cyan-600', bg: 'bg-cyan-50' },
         { title: '點數兌換', value: stats.totalRedeemed.toLocaleString(), subValue: `${stats.redemptionCount} 次兌換`, icon: Sparkles, color: 'text-purple-600', bg: 'bg-purple-50' },
         { title: '流通率', value: `${stats.burnRate}%`, subValue: 'Health Score', icon: TrendingUp, color: 'text-orange-600', bg: 'bg-orange-50' },
@@ -277,7 +320,38 @@ const MerchantDashboard = () => {
                     </div>
                     <p className="text-slate-500 font-medium ml-1 text-lg">全方位掌握會員成長與點數經濟脈動。</p>
                 </div>
-                <div className="flex items-center gap-4">
+                <div className="flex flex-col xl:flex-row items-center gap-4">
+                    {dateFilter === 'custom' && (
+                        <div className="flex items-center gap-2 bg-white rounded-xl shadow-sm border border-slate-200 p-1 px-3">
+                            <input
+                                type="date"
+                                value={customRange.start}
+                                onChange={(e) => setCustomRange({ ...customRange, start: e.target.value })}
+                                className="border-none text-slate-700 font-bold focus:ring-0 text-sm"
+                            />
+                            <span className="text-slate-400">-</span>
+                            <input
+                                type="date"
+                                value={customRange.end}
+                                onChange={(e) => setCustomRange({ ...customRange, end: e.target.value })}
+                                className="border-none text-slate-700 font-bold focus:ring-0 text-sm"
+                            />
+                        </div>
+                    )}
+                    <div className="flex bg-white rounded-xl shadow-sm border border-slate-200 p-1">
+                        <Select value={dateFilter} onValueChange={setDateFilter}>
+                            <SelectTrigger className="w-[180px] border-none shadow-none h-12 text-slate-700 font-bold text-base focus:ring-0">
+                                <Calendar className="w-5 h-5 mr-2 text-slate-400" />
+                                <SelectValue placeholder="選擇區間" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="today">本日 (Today)</SelectItem>
+                                <SelectItem value="week">本週 (This Week)</SelectItem>
+                                <SelectItem value="month">本月 (This Month)</SelectItem>
+                                <SelectItem value="custom">自訂區間</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
                     <div className="flex bg-white rounded-xl shadow-sm border border-slate-200 p-1">
                         <Select value={selectedBranchId} onValueChange={setSelectedBranchId}>
                             <SelectTrigger className="w-[200px] border-none shadow-none h-12 text-slate-700 font-bold text-base focus:ring-0">
@@ -286,6 +360,7 @@ const MerchantDashboard = () => {
                             </SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="all">所有分店 (All Branches)</SelectItem>
+                                <SelectItem value="all_active">所有營業中分店</SelectItem>
                                 {branches.map(b => (
                                     <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
                                 ))}
@@ -333,7 +408,9 @@ const MerchantDashboard = () => {
                             </div>
                             <div>
                                 <h3 className="text-xl font-black text-slate-900">點數發放趨勢</h3>
-                                <p className="text-slate-400 text-xs font-bold uppercase tracking-wider">Recent 7 Days Activity</p>
+                                <p className="text-slate-400 text-xs font-bold uppercase tracking-wider">
+                                    {dateFilter === 'today' ? 'Today Since 00:00' : dateFilter === 'week' ? 'This Week' : dateFilter === 'month' ? 'This Month' : 'Selected Range'}
+                                </p>
                             </div>
                         </div>
                     </div>
@@ -411,8 +488,8 @@ const MerchantDashboard = () => {
                         </TabsList>
 
                         <div className="flex gap-2">
-                            <Button variant="outline" onClick={() => handleExport('transactions')} className="rounded-xl border-slate-200 hover:bg-slate-50 text-slate-600 font-bold gap-2">
-                                <Download className="w-4 h-4" /> 匯出交易
+                            <Button onClick={() => navigate('/dashboard/transactions')} variant="ghost" className="rounded-xl text-teal-600 font-bold gap-2 hover:bg-teal-50">
+                                查看全部交易 <ChevronRight className="w-4 h-4" />
                             </Button>
                         </div>
                     </div>
@@ -429,7 +506,7 @@ const MerchantDashboard = () => {
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {transactions.slice(0, 10).map((t) => (
+                                {transactions.map((t) => (
                                     <TableRow key={t.id} className="hover:bg-slate-50/80 border-slate-50">
                                         <TableCell className="pl-4 font-medium text-slate-600">{new Date(t.created_at).toLocaleString('zh-TW', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</TableCell>
                                         <TableCell className="font-bold text-slate-800">{t.branches?.name || '-'}</TableCell>

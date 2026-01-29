@@ -6,6 +6,7 @@ import DashboardLayout from './components/layouts/DashboardLayout';
 import MerchantDashboard from './pages/merchant/MerchantDashboard';
 import BranchManagement from './pages/merchant/BranchManagement';
 import RewardsManagement from './pages/merchant/RewardsManagement';
+import TransactionHistory from './pages/merchant/TransactionHistory';
 import Settings from './pages/merchant/Settings';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AuthLayout from './components/layouts/AuthLayout';
@@ -263,6 +264,7 @@ function App() {
             <Route index element={<MerchantDashboard />} />
             <Route path="branches" element={<BranchManagement />} />
             <Route path="rewards" element={<RewardsManagement />} />
+            <Route path="transactions" element={<TransactionHistory />} />
             <Route path="settings" element={<Settings />} />
           </Route>
 

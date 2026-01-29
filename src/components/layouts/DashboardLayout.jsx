@@ -2,7 +2,7 @@ import React from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { store } from '../../lib/store';
 import { supabase } from '../../lib/supabase';
-import { LayoutDashboard, Store, Gift, Settings, Users, LogOut } from 'lucide-react';
+import { LayoutDashboard, Store, Gift, Settings, Users, LogOut, FileText } from 'lucide-react';
 
 const DashboardLayout = ({ role = 'merchant' }) => {
     const navigate = useNavigate();
@@ -26,6 +26,7 @@ const DashboardLayout = ({ role = 'merchant' }) => {
     const merchantLinks = [
         { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, end: true },
         { to: '/dashboard/branches', label: '分店管理', icon: Store },
+        { to: '/dashboard/transactions', label: '交易明細', icon: FileText },
         { to: '/dashboard/rewards', label: '兌換項目', icon: Gift },
         { to: '/dashboard/settings', label: '設定', icon: Settings },
     ];
