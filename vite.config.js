@@ -5,7 +5,7 @@ import { defineConfig } from "vite"
 
 export default defineConfig({
   // Use root for Vercel, Netlify or local dev, use project name for GitHub Pages
-  base: (process.env.VERCEL || process.env.NETLIFY) ? "/" : "/LoyaltyLoop/",
+  base: (process.env.VERCEL || process.env.NETLIFY || process.env.ZEABUR || process.env.RAILWAY) ? "/" : "/LoyaltyLoop/",
   plugins: [
     react(),
     legacy({
