@@ -71,8 +71,17 @@ const AdminDashboard = () => {
         e.preventDefault();
         try {
             setLoading(true);
-            const { data, error } = await supabase.functions.invoke('admin-create-merchant', {
-                body: {
+            setLoading(true);
+            const { data: { session } } = await supabase.auth.getSession();
+            const apiUrl = import.meta.env.VITE_API_URL || "https://loyalty-loop-api.zeabur.app";
+
+            const response = await fetch(`${apiUrl}/create-merchant`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${session?.access_token}`
+                },
+                body: JSON.stringify({
                     email: newMerchant.email,
                     password: newMerchant.password,
                     store_name: newMerchant.store_name,
@@ -81,16 +90,24 @@ const AdminDashboard = () => {
                     contact_address: newMerchant.contact_address,
                     tax_id: newMerchant.tax_id,
                     status: newMerchant.status
-                }
+                })
             });
 
-            if (error) {
-                // Try to extract body from the error if possible
-                const body = error.context?.body;
-                const message = body?.error || error.message;
-                throw new Error(message);
+            const data = await response.json();
+
+            if (!response.ok) {
+                // Compatible structure for error handling below
+                const error = { message: data.error || 'Request failed' };
+                // Fake the supabase structure for compatibility
+                throw error;
             }
-            if (data?.error) throw new Error(data.error);
+
+            // If success, data is the response body
+            // We just format it to look like the old { data, error } structure if needed, 
+            // but here we can just proceed.
+
+
+
 
             alert("商家帳號建立成功！(已跳過 Email 驗證)");
             setShowAddMerchant(false);

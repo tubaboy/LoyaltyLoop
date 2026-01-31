@@ -32,3 +32,6 @@ dist-ssr
 # AI / Agent temporary files
 .agent/
 .shared/
+
+# Migration Scripts
+scripts/
