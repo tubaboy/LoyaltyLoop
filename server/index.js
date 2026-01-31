@@ -90,6 +90,16 @@ app.post('/create-merchant', async (req, res) => {
             role: 'merchant'
         });
 
+        // Helper to generate 4-char store code
+        function generateStoreCode() {
+            const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+            let code = '';
+            for (let i = 0; i < 4; i++) {
+                code += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            return code;
+        }
+
         // 6. Create Merchant Entry
         const { error: dbError } = await supabaseAdmin
             .from('merchants')
@@ -97,6 +107,7 @@ app.post('/create-merchant', async (req, res) => {
                 id: newUserId,
                 email,
                 store_name,
+                store_code: generateStoreCode(), // Generate code explicitly
                 recovery_password: password,
                 ...details
             });
