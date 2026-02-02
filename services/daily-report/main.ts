@@ -14,13 +14,19 @@ const PORT = Deno.env.get("PORT") ? parseInt(Deno.env.get("PORT")!) : 8000;
 console.log(`Starting service on port ${PORT}...`);
 
 serve(async (req) => {
-    // Health check endpoint for Zeabur
     const url = new URL(req.url);
+    console.log(`Incoming request: ${req.method} ${url.pathname}`);
+
+    // Health check endpoint for Zeabur
     if (url.pathname === "/" || url.pathname === "/health") {
         return new Response("OK", { status: 200 });
     }
 
-    if (req.method !== "POST") {
+    // Debugging: Allow manual trigger via GET /test
+    if (url.pathname === "/test" && req.method === "GET") {
+        console.log("Manual test trigger via GET /test");
+        // We will proceed to the report logic
+    } else if (req.method !== "POST") {
         return new Response("Method Not Allowed", { status: 405 });
     }
 
