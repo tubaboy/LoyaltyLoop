@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
-import { Loader2, ShieldCheck, Palette, Timer, Check, RefreshCw, AlertCircle, XCircle, Info } from 'lucide-react';
+import { Loader2, ShieldCheck, Palette, Timer, Check, RefreshCw, AlertCircle, XCircle, Info, Sparkles } from 'lucide-react';
 import { cn } from "@/lib/utils";
 
 const StatusAlert = ({ message, type = 'error' }) => {
@@ -62,7 +62,7 @@ export default function Settings() {
     const [pwMessage, setPwMessage] = useState({ text: '', type: '' });
 
     // Branch Settings State
-    const [branchSettings, setBranchSettings] = useState({ theme_color: 'teal', reset_interval: 10 });
+    const [branchSettings, setBranchSettings] = useState({ theme_color: 'teal', reset_interval: 10, enable_confetti: true });
     const [settingsLoading, setSettingsLoading] = useState(false);
     const [settingsMessage, setSettingsMessage] = useState({ text: '', type: '' });
 
@@ -94,7 +94,9 @@ export default function Settings() {
                 setSelectedBranchId(data[0].id);
                 setBranchSettings({
                     theme_color: data[0].theme_color || 'teal',
-                    reset_interval: data[0].reset_interval || 10
+                    theme_color: data[0].theme_color || 'teal',
+                    reset_interval: data[0].reset_interval || 10,
+                    enable_confetti: data[0].enable_confetti !== false
                 });
             }
         } catch (err) {
@@ -110,7 +112,9 @@ export default function Settings() {
         if (branch) {
             setBranchSettings({
                 theme_color: branch.theme_color || 'teal',
-                reset_interval: branch.reset_interval || 10
+                theme_color: branch.theme_color || 'teal',
+                reset_interval: branch.reset_interval || 10,
+                enable_confetti: branch.enable_confetti !== false
             });
         }
     };
@@ -158,7 +162,9 @@ export default function Settings() {
                 .from('branches')
                 .update({
                     theme_color: branchSettings.theme_color,
-                    reset_interval: branchSettings.reset_interval
+                    theme_color: branchSettings.theme_color,
+                    reset_interval: branchSettings.reset_interval,
+                    enable_confetti: branchSettings.enable_confetti
                 })
                 .eq('id', selectedBranchId);
 
@@ -321,6 +327,28 @@ export default function Settings() {
                                     ))}
                                 </div>
                                 <p className="text-[10px] text-slate-400 font-bold px-1">系統將在完成操作後，於指定秒數內自動返回顧客查詢登入頁面。</p>
+                            </div>
+
+                            {/* Confetti Toggle */}
+                            <div className="space-y-3">
+                                <Label className="font-black text-slate-400 uppercase text-[10px] tracking-[0.2em] ml-1">特效設定 Effects</Label>
+                                <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                                    <div className="flex items-center gap-3">
+                                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${branchSettings.enable_confetti ? 'bg-teal-100 text-teal-600' : 'bg-slate-200 text-slate-400'}`}>
+                                            <Sparkles className="w-5 h-5" />
+                                        </div>
+                                        <div>
+                                            <p className="font-black text-sm text-slate-900">慶祝特效</p>
+                                            <p className="text-xs text-slate-400 font-bold">累積點數或兌換成功時顯示灑花效果</p>
+                                        </div>
+                                    </div>
+                                    <button
+                                        onClick={() => setBranchSettings(prev => ({ ...prev, enable_confetti: !prev.enable_confetti }))}
+                                        className={`w-14 h-8 rounded-full transition-all duration-300 relative ${branchSettings.enable_confetti ? 'bg-teal-500' : 'bg-slate-300'}`}
+                                    >
+                                        <div className={`w-6 h-6 bg-white rounded-full shadow-md absolute top-1 transition-all duration-300 ${branchSettings.enable_confetti ? 'left-7' : 'left-1'}`} />
+                                    </button>
+                                </div>
                             </div>
 
                             {settingsMessage.text && (

@@ -14,11 +14,16 @@ export const store = {
     logout: async () => {
         await supabase.auth.signOut();
         localStorage.removeItem('loyalty_merchant'); // Cleanup legacy
+        localStorage.removeItem('loyalty_role'); // Clear role cache
     },
 
     isLoggedIn: async () => {
         const { data: { session } } = await supabase.auth.getSession();
         return !!session;
+    },
+
+    getCachedRole: () => {
+        return localStorage.getItem('loyalty_role');
     },
 
     getUserRole: async (currentUser = null) => {
@@ -47,10 +52,17 @@ export const store = {
                 const { data: profile, error } = await Promise.race([queryPromise, timeoutPromise]);
                 console.log("[store] getUserRole: Query finished!", { profile, error });
                 if (error) throw error;
-                return (profile && profile.role) || null;
+
+                const role = (profile && profile.role) || null;
+                if (role) {
+                    localStorage.setItem('loyalty_role', role);
+                } else {
+                    localStorage.removeItem('loyalty_role');
+                }
+                return role;
             } catch (err) {
                 console.error("[store] getUserRole error:", err.message);
-                return null;
+                return localStorage.getItem('loyalty_role'); // Fallback to cache on error if possible
             }
         } catch (err) {
             console.error("[store] getUserRole catch:", err);
@@ -63,7 +75,7 @@ export const store = {
         // Query branches by key
         const { data, error } = await supabase
             .from('branches')
-            .select('id, name, merchant_id, is_active, daily_redemption_limit, theme_color, reset_interval, store_name:merchants(store_name)')
+            .select('id, name, merchant_id, is_active, daily_redemption_limit, theme_color, reset_interval, enable_confetti, store_name:merchants(store_name)')
             .eq('login_key', key)
             .maybeSingle();
 
@@ -78,6 +90,7 @@ export const store = {
             daily_redemption_limit: data.daily_redemption_limit ?? 2,
             theme_color: data.theme_color || 'teal',
             reset_interval: data.reset_interval || 10,
+            enable_confetti: data.enable_confetti !== false, // Default true
             store_name: (data.store_name && data.store_name.store_name) || 'Unknown Store'
         };
     },

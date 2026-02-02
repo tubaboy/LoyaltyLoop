@@ -93,7 +93,7 @@ const ProtectedRoute = ({ children, allowedRole, userRole, hasSession }) => {
 function App() {
   useVisualTier();
   const [session, setSession] = useState(null);
-  const [userRole, setUserRole] = useState(null); // 'admin', 'merchant', or null
+  const [userRole, setUserRole] = useState(store.getCachedRole()); // Initialize from cache
   const [loading, setLoading] = useState(true);
   const fetchingRef = useRef(false);
 

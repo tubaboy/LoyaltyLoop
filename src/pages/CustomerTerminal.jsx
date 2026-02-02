@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ArrowLeft, Delete, Monitor, LogOut, Maximize, Minimize, X } from 'lucide-react';
 import { cn } from "@/lib/utils";
+import confetti from 'canvas-confetti';
 
 const THEME_MAP = {
     teal: {
@@ -178,6 +179,7 @@ export default function CustomerTerminal({ onLogout }) {
     const [isFullscreen, setIsFullscreen] = useState(false);
     const [theme, setTheme] = useState(THEME_MAP.teal);
     const [resetInterval, setResetInterval] = useState(10);
+    const [enableConfetti, setEnableConfetti] = useState(true);
 
     const toggleFullscreen = () => {
         if (!document.fullscreenElement) {
@@ -206,6 +208,7 @@ export default function CustomerTerminal({ onLogout }) {
             });
             setTheme(THEME_MAP[session.theme_color] || THEME_MAP.teal);
             setResetInterval(session.reset_interval || 10);
+            setEnableConfetti(session.enable_confetti !== false);
         }
 
         return () => {
@@ -265,6 +268,16 @@ export default function CustomerTerminal({ onLogout }) {
         }
     };
 
+    const triggerConfetti = () => {
+        if (!enableConfetti) return;
+        confetti({
+            particleCount: 100,
+            spread: 70,
+            origin: { y: 0.6 },
+            colors: theme.primary === 'teal-600' ? ['#0d9488', '#14b8a6', '#5eead4'] : undefined
+        });
+    };
+
     // --- Action View Logic ---
     const handleBack = () => {
         cancelAutoReset();
@@ -287,6 +300,7 @@ export default function CustomerTerminal({ onLogout }) {
             const newPoints = await store.addPoints(phone, amount);
             setPoints(newPoints);
             setMessage(`Added ${amount} Point${amount > 1 ? 's' : ''}! 🎉 (Resetting in ${resetInterval}s...)`);
+            triggerConfetti();
             startAutoReset();
         } catch (error) {
             console.error(error);
@@ -305,6 +319,7 @@ export default function CustomerTerminal({ onLogout }) {
                 setPoints(success);
                 if (!isManual) setRedemptionCount(prev => prev + 1);
                 setMessage(`${isManual ? '扣除' : '兌換'} ${cost} 點! ${isManual ? '🔧' : '🎁'} (Resetting in ${resetInterval}s...)`);
+                triggerConfetti();
                 startAutoReset();
             } else {
                 setMessage('點數不足! ⚠️');

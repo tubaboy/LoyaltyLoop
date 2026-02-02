@@ -13,18 +13,21 @@ import { store } from '../../lib/store';
 const MerchantDashboard = () => {
     const navigate = useNavigate();
     const [selectedBranchId, setSelectedBranchId] = useState('all');
-    const [dateFilter, setDateFilter] = useState('month'); // today, week, month, custom
+    const [dateFilter, setDateFilter] = useState('today'); // today, week, month, custom
     const [customRange, setCustomRange] = useState({
         start: new Date().toISOString().split('T')[0],
         end: new Date().toISOString().split('T')[0]
     });
     const [branches, setBranches] = useState([]);
-    const [transactions, setTransactions] = useState([]);
+    const [transactions, setTransactions] = useState([]); // Recent 5
+    const [allTransactions, setAllTransactions] = useState([]); // All in period for stats/rankings
     const [stats, setStats] = useState({
         totalCustomers: 0,
         newMembers: 0,
-        totalIssued: 0,
-        totalRedeemed: 0,
+        periodIssued: 0,
+        periodRedeemed: 0,
+        lifetimeIssued: 0,
+        periodAddCount: 0,
         burnRate: 0,
         redemptionCount: 0,
         activeBranches: 0,
@@ -112,57 +115,83 @@ const MerchantDashboard = () => {
                 .gte('created_at', startISO)
                 .lte('created_at', endISO);
 
-            // 3. Transactions Query
-            let query = supabase
+            // 3. Stats Data (ALL transactions in range for Rankings/Summaries/Stats)
+            let statsQuery = supabase
+                .from('transactions')
+                .select(`type, amount, created_at, customer_id, branch_id, branches(name), customers(phone)`)
+                .eq('merchant_id', merchantId)
+                .gte('created_at', startISO)
+                .lte('created_at', endISO);
+
+            if (selectedBranchId !== 'all') {
+                statsQuery = statsQuery.eq('branch_id', selectedBranchId);
+            }
+
+            const { data: allPeriodTrans, error: statsError } = await statsQuery;
+            if (statsError) throw statsError;
+
+            setAllTransactions(allPeriodTrans || []);
+
+            // 4. Recent Transactions Query (List display)
+            let listQuery = supabase
                 .from('transactions')
                 .select(`*, branches (name), customers (phone)`)
                 .eq('merchant_id', merchantId)
                 .gte('created_at', startISO)
                 .lte('created_at', endISO)
                 .order('created_at', { ascending: false })
-                .limit(5); // Only fetch 5 for dashboard overview
+                .limit(5);
 
             if (selectedBranchId !== 'all') {
-                query = query.eq('branch_id', selectedBranchId);
+                listQuery = listQuery.eq('branch_id', selectedBranchId);
             }
 
-            const { data: transData, error } = await query;
+            const { data: transData, error } = await listQuery;
             if (error) throw error;
 
             setTransactions(transData || []);
 
-            // 4. Stats Calculation
-            let issued = 0;
-            let redeemed = 0;
-            let redemptions = 0;
+            // 5. Lifetime Issued Query
+            let lifetimeQuery = supabase
+                .from('transactions')
+                .select('amount')
+                .eq('merchant_id', merchantId)
+                .eq('type', 'add');
+
+            if (selectedBranchId !== 'all') {
+                lifetimeQuery = lifetimeQuery.eq('branch_id', selectedBranchId);
+            }
+
+            const { data: lifetimeData } = await lifetimeQuery;
+            const lifetimeTotal = (lifetimeData || []).reduce((sum, t) => sum + (t.amount || 0), 0);
+
+            // 6. Stats Calculation
+            const issued = (allPeriodTrans || []).filter(t => t.type === 'add').reduce((acc, t) => acc + (t.amount || 0), 0);
+            const redeemed = (allPeriodTrans || []).filter(t => ['redeem', 'manual_redeem'].includes(t.type)).reduce((acc, t) => acc + (t.amount || 0), 0);
+            const redemptions = (allPeriodTrans || []).filter(t => ['redeem', 'manual_redeem'].includes(t.type)).length;
+
             const dailyMap = {};
 
             // Initialize Chart Keys
-            // If range is 'today', break down by hour, otherwise by day
             const isToday = dateFilter === 'today' || (dateFilter === 'custom' && customRange.start === customRange.end);
 
             if (isToday) {
-                // Hourly keys 00-23
                 for (let i = 0; i < 24; i++) {
                     const hourStr = `${i.toString().padStart(2, '0')}:00`;
                     dailyMap[hourStr] = 0;
                 }
             } else {
-                // Daily keys loop from start to end
                 const loopDate = new Date(startDate);
                 while (loopDate <= endDate) {
                     const dateStr = loopDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-                    // Only add if not already present (handling potential duplicates if logic is weird, but Date increments safely)
                     if (dailyMap[dateStr] === undefined) dailyMap[dateStr] = 0;
                     loopDate.setDate(loopDate.getDate() + 1);
                 }
             }
 
-            transData.forEach(t => {
+            (allPeriodTrans || []).forEach(t => {
                 const amt = t.amount || 0;
                 if (t.type === 'add') {
-                    issued += amt;
-
                     const tDate = new Date(t.created_at);
                     let key;
                     if (isToday) {
@@ -174,9 +203,6 @@ const MerchantDashboard = () => {
                     if (dailyMap[key] !== undefined) {
                         dailyMap[key] += amt;
                     }
-                } else if (t.type === 'redeem') {
-                    redeemed += amt;
-                    redemptions += 1;
                 }
             });
 
@@ -189,8 +215,10 @@ const MerchantDashboard = () => {
             setStats({
                 totalCustomers: customerCount || 0,
                 newMembers: newMemberCount || 0,
-                totalIssued: issued,
-                totalRedeemed: redeemed,
+                periodIssued: issued,
+                periodRedeemed: redeemed,
+                lifetimeIssued: lifetimeTotal,
+                periodAddCount: (allPeriodTrans || []).filter(t => t.type === 'add').length,
                 burnRate: burnRate,
                 redemptionCount: redemptions,
                 activeBranches: branches.length
@@ -207,50 +235,52 @@ const MerchantDashboard = () => {
     // Derived Data for Tables
     const memberRankings = useMemo(() => {
         const map = {};
-        transactions.forEach(t => {
+        allTransactions.forEach(t => {
             if (!map[t.customer_id]) {
                 map[t.customer_id] = {
                     id: t.customer_id,
                     phone: t.customers?.phone || 'Unknown',
-                    points: 0,
+                    points: 0, // This seems to be unused or for a different purpose if accumulated is used for ranking
                     lastSeen: t.created_at,
-                    txns: 0
+                    txns: 0,
+                    accumulated: 0, // Initialize accumulated
+                    redeemed: 0 // Initialize redeemed for potential future use or display
                 };
             }
-            if (t.type === 'add') map[t.customer_id].points += t.amount;
-            else if (t.type === 'redeem') map[t.customer_id].points -= t.amount; // Should we subtract? Usually rankings are based on specific metric. Let's do "Total Accumulated" for ranking, not balance.
-
             // Re-read plan: "Member Rankings -> Total Accumulated Points"
-            // So if type is add, increase. If redeem, ignore for "Accumulated"? 
+            // So if type is add, increase. If redeem, ignore for "Accumulated"?
             // Plan says: "Total Accumulated Points" and "Current Remaining Points".
-            // Since we don't have current remaining points in transaction stream clearly (it's stateful), we can only approx. 
-            // OR we assume transaction history is complete. 
+            // Since we don't have current remaining points in transaction stream clearly (it's stateful), we can only approx.
+            // OR we assume transaction history is complete.
             // Let's just sum 'add' for "Total Accumulated".
-            if (t.type === 'add') map[t.customer_id].accumulated = (map[t.customer_id].accumulated || 0) + t.amount;
+            if (t.type === 'add') map[t.customer_id].accumulated = (map[t.customer_id].accumulated || 0) + (t.amount || 0);
+            if (['redeem', 'manual_redeem'].includes(t.type)) {
+                map[t.customer_id].redeemed += (t.amount || 0);
+            }
 
             map[t.customer_id].txns += 1;
             if (new Date(t.created_at) > new Date(map[t.customer_id].lastSeen)) {
                 map[t.customer_id].lastSeen = t.created_at;
             }
         });
-        return Object.values(map).sort((a, b) => (b.accumulated || 0) - (a.accumulated || 0)).slice(0, 50);
-    }, [transactions]);
+        return Object.values(map).sort((a, b) => (b.accumulated || 0) - (a.accumulated || 0)).slice(0, 10);
+    }, [allTransactions]);
 
     const branchSummary = useMemo(() => {
         if (selectedBranchId !== 'all') return [];
         const map = {};
-        transactions.forEach(t => {
+        allTransactions.forEach(t => {
             const bid = t.branch_id || 'unknown';
             const bName = t.branches?.name || 'Unknown';
             if (!map[bid]) map[bid] = { name: bName, issued: 0, redeemed: 0, txns: 0, members: new Set() };
 
-            if (t.type === 'add') map[bid].issued += t.amount;
-            else if (t.type === 'redeem') map[bid].redeemed += t.amount;
+            if (t.type === 'add') map[bid].issued += (t.amount || 0);
+            if (['redeem', 'manual_redeem'].includes(t.type)) map[bid].redeemed += (t.amount || 0);
             map[bid].txns += 1;
             map[bid].members.add(t.customer_id);
         });
         return Object.values(map).map(b => ({ ...b, uniqueMembers: b.members.size }));
-    }, [transactions, selectedBranchId]);
+    }, [allTransactions, selectedBranchId]);
 
 
 
@@ -295,9 +325,9 @@ const MerchantDashboard = () => {
 
     const statCards = [
         { title: '會員總數', value: stats.totalCustomers, subValue: `所選區間新增 +${stats.newMembers}`, icon: Users, color: 'text-teal-600', bg: 'bg-teal-50' },
-        { title: '點數發放', value: stats.totalIssued.toLocaleString(), subValue: 'Lifetime Issued', icon: CreditCard, color: 'text-cyan-600', bg: 'bg-cyan-50' },
-        { title: '點數兌換', value: stats.totalRedeemed.toLocaleString(), subValue: `${stats.redemptionCount} 次兌換`, icon: Sparkles, color: 'text-purple-600', bg: 'bg-purple-50' },
-        { title: '流通率', value: `${stats.burnRate}%`, subValue: 'Health Score', icon: TrendingUp, color: 'text-orange-600', bg: 'bg-orange-50' },
+        { title: '點數發放', value: stats.periodIssued.toLocaleString(), subValue: `Lifetime: ${stats.lifetimeIssued.toLocaleString()}`, icon: CreditCard, color: 'text-cyan-600', bg: 'bg-cyan-50' },
+        { title: '點數兌換', value: stats.periodRedeemed.toLocaleString(), subValue: `${stats.redemptionCount} 次兌換`, icon: Sparkles, color: 'text-purple-600', bg: 'bg-purple-50' },
+        { title: '流通率', value: `${stats.burnRate}%`, subValue: 'Redeemed / Issued', icon: TrendingUp, color: 'text-orange-600', bg: 'bg-orange-50' },
     ];
 
     if (loading && transactions.length === 0) return (
@@ -454,13 +484,13 @@ const MerchantDashboard = () => {
                                         {memberRankings.length > 0 ? memberRankings[0].phone : '-'}
                                     </div>
                                     <div className="text-teal-400 text-sm font-bold">
-                                        Top Spender (Accumulated)
+                                        {memberRankings.length > 0 ? `${memberRankings[0].accumulated.toLocaleString()} PTS` : 'Top Spender'} (Accumulated)
                                     </div>
                                 </div>
                                 <div className="bg-white/5 p-5 rounded-3xl border border-white/10">
                                     <div className="text-slate-400 text-xs font-bold uppercase mb-2">Avg. Transaction</div>
                                     <div className="text-2xl font-black text-white mb-1">
-                                        {transactions.length > 0 ? (stats.totalIssued / transactions.filter(t => t.type === 'add').length).toFixed(0) : 0} <span className="text-sm text-slate-400">PTS</span>
+                                        {transactions.length > 0 ? (stats.periodIssued / (stats.periodAddCount || 1)).toFixed(0) : 0} <span className="text-sm text-slate-400">PTS</span>
                                     </div>
                                 </div>
                             </div>
@@ -513,7 +543,7 @@ const MerchantDashboard = () => {
                                         <TableCell className="font-mono font-bold text-slate-600">{t.customers?.phone || '-'}</TableCell>
                                         <TableCell>
                                             <span className={`px-3 py-1 rounded-full text-xs font-black ${t.type === 'add' ? 'bg-teal-50 text-teal-600' : 'bg-purple-50 text-purple-600'}`}>
-                                                {t.type === 'add' ? '發放' : '兌換'}
+                                                {t.type === 'add' ? '發放' : (t.type === 'manual_redeem' ? '手動' : '兌換')}
                                             </span>
                                         </TableCell>
                                         <TableCell className="text-right pr-4 font-black tabular-nums text-slate-900">

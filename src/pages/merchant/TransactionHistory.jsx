@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
-import { FileText, Search, Download, Calendar, ArrowLeft, ArrowRight, Store } from 'lucide-react';
+import { FileText, Search, Download, Calendar, ArrowLeft, ArrowRight, Store, RefreshCw } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { store } from '../../lib/store';
 
@@ -15,7 +15,7 @@ const TransactionHistory = () => {
 
     // Filters
     const [selectedBranchId, setSelectedBranchId] = useState('all');
-    const [dateFilter, setDateFilter] = useState('month'); // today, week, month, custom
+    const [dateFilter, setDateFilter] = useState('today'); // today, week, month, custom
     const [customRange, setCustomRange] = useState({
         start: new Date().toISOString().split('T')[0],
         end: new Date().toISOString().split('T')[0]
@@ -51,6 +51,7 @@ const TransactionHistory = () => {
     const fetchTransactions = async (currentPage) => {
         try {
             setLoading(true);
+            if (currentPage === 0) setTransactions([]); // Clear data on filter change/initial
             const merchantId = await store.getMerchantId();
             if (!merchantId) return;
 
@@ -323,26 +324,41 @@ const TransactionHistory = () => {
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {transactions.map((t) => (
-                            <TableRow key={t.id} className="hover:bg-slate-50/80 border-slate-50">
-                                <TableCell className="pl-8 font-medium text-slate-600">{new Date(t.created_at).toLocaleString('zh-TW')}</TableCell>
-                                <TableCell className="font-bold text-slate-800">{t.branches?.name || '-'}</TableCell>
-                                <TableCell className="font-mono font-bold text-slate-600">{t.customers?.phone || '-'}</TableCell>
-                                <TableCell>
-                                    <span className={`px-3 py-1 rounded-full text-xs font-black ${t.type === 'add' ? 'bg-teal-50 text-teal-600' : 'bg-purple-50 text-purple-600'}`}>
-                                        {t.type === 'add' ? '發放' : '兌換'}
-                                    </span>
-                                </TableCell>
-                                <TableCell className="text-right pr-8 font-black tabular-nums text-slate-900">
-                                    {t.type === 'add' ? '+' : '-'}{t.amount}
+                        {loading && page === 0 ? (
+                            <TableRow>
+                                <TableCell colSpan={5} className="px-10 py-32 text-center">
+                                    <RefreshCw className="w-10 h-10 text-teal-600/20 animate-spin mx-auto mb-4" />
+                                    <p className="text-slate-400 font-bold uppercase tracking-widest text-xs">同步交易資料中...</p>
                                 </TableCell>
                             </TableRow>
-                        ))}
-                        {transactions.length === 0 && !loading && (
-                            <TableRow><TableCell colSpan={5} className="h-32 text-center text-slate-400 font-bold">沒有符合條件的交易紀錄</TableCell></TableRow>
-                        )}
-                        {loading && (
-                            <TableRow><TableCell colSpan={5} className="h-32 text-center text-slate-400 font-bold">載入中...</TableCell></TableRow>
+                        ) : (
+                            <>
+                                {transactions.map((t) => (
+                                    <TableRow key={t.id} className="hover:bg-slate-50/80 border-slate-50">
+                                        <TableCell className="pl-8 font-medium text-slate-600">{new Date(t.created_at).toLocaleString('zh-TW')}</TableCell>
+                                        <TableCell className="font-bold text-slate-800">{t.branches?.name || '-'}</TableCell>
+                                        <TableCell className="font-mono font-bold text-slate-600">{t.customers?.phone || '-'}</TableCell>
+                                        <TableCell>
+                                            <span className={`px-3 py-1 rounded-full text-xs font-black ${t.type === 'add' ? 'bg-teal-50 text-teal-600' : 'bg-purple-50 text-purple-600'}`}>
+                                                {t.type === 'add' ? '發放' : (t.type === 'manual_redeem' ? '手動兌換' : '兌換')}
+                                            </span>
+                                        </TableCell>
+                                        <TableCell className="text-right pr-8 font-black tabular-nums text-slate-900">
+                                            {t.type === 'add' ? '+' : '-'}{t.amount}
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                                {transactions.length === 0 && !loading && (
+                                    <TableRow><TableCell colSpan={5} className="h-48 text-center text-slate-400 font-black uppercase tracking-widest">沒有符合條件的交易紀錄</TableCell></TableRow>
+                                )}
+                                {loading && page > 0 && (
+                                    <TableRow><TableCell colSpan={5} className="h-24 text-center">
+                                        <div className="flex items-center justify-center gap-2 text-slate-400 font-bold text-xs uppercase tracking-widest">
+                                            <RefreshCw className="w-4 h-4 animate-spin" /> 載入更多資料...
+                                        </div>
+                                    </TableCell></TableRow>
+                                )}
+                            </>
                         )}
                     </TableBody>
                 </Table>
