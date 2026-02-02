@@ -1,10 +1,4 @@
--- Enable the pg_cron extension
-create extension if not exists pg_cron with schema extensions;
-
--- Grant usage (standard)
-grant usage on schema cron to postgres;
-grant all privileges on all tables in schema cron to postgres;
-
+-- Skip extension creation as it is already enabled and managed by the system.
 -- 1. Unschedule old job safely
 do $$
 begin
