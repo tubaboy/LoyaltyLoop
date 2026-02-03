@@ -66,6 +66,11 @@ export default function Settings() {
     const [settingsLoading, setSettingsLoading] = useState(false);
     const [settingsMessage, setSettingsMessage] = useState({ text: '', type: '' });
 
+    // Merchant (System) Settings State
+    const [merchantSettings, setMerchantSettings] = useState({ line_user_id: '', daily_report_enabled: false });
+    const [merchantSettingsLoading, setMerchantSettingsLoading] = useState(false);
+    const [merchantSettingsMessage, setMerchantSettingsMessage] = useState({ text: '', type: '' });
+
     useEffect(() => {
         fetchInitialData();
 
@@ -94,9 +99,23 @@ export default function Settings() {
                 setSelectedBranchId(data[0].id);
                 setBranchSettings({
                     theme_color: data[0].theme_color || 'teal',
-                    theme_color: data[0].theme_color || 'teal',
                     reset_interval: data[0].reset_interval || 10,
                     enable_confetti: data[0].enable_confetti !== false
+                });
+            }
+
+            // Fetch Merchant Settings
+            const { data: merchant, error: mError } = await supabase
+                .from('merchants')
+                .select('settings')
+                .eq('id', merchantId)
+                .single();
+
+            if (mError) throw mError;
+            if (merchant && merchant.settings) {
+                setMerchantSettings({
+                    line_user_id: merchant.settings.line_user_id || '',
+                    daily_report_enabled: !!merchant.settings.daily_report_enabled
                 });
             }
         } catch (err) {
@@ -111,7 +130,6 @@ export default function Settings() {
         setSelectedBranchId(branchId);
         if (branch) {
             setBranchSettings({
-                theme_color: branch.theme_color || 'teal',
                 theme_color: branch.theme_color || 'teal',
                 reset_interval: branch.reset_interval || 10,
                 enable_confetti: branch.enable_confetti !== false
@@ -162,7 +180,6 @@ export default function Settings() {
                 .from('branches')
                 .update({
                     theme_color: branchSettings.theme_color,
-                    theme_color: branchSettings.theme_color,
                     reset_interval: branchSettings.reset_interval,
                     enable_confetti: branchSettings.enable_confetti
                 })
@@ -183,6 +200,43 @@ export default function Settings() {
             setSettingsMessage({ text: err.message || '儲存失敗', type: 'error' });
         } finally {
             setSettingsLoading(false);
+        }
+    };
+
+    const handleSaveMerchantSettings = async () => {
+        try {
+            setMerchantSettingsLoading(true);
+            setMerchantSettingsMessage({ text: '', type: '' });
+            const merchantId = await store.getMerchantId();
+
+            // Fetch current settings first to merge
+            const { data: current, error: getError } = await supabase
+                .from('merchants')
+                .select('settings')
+                .eq('id', merchantId)
+                .single();
+
+            if (getError) throw getError;
+
+            const newSettings = {
+                ...(current?.settings || {}),
+                line_user_id: merchantSettings.line_user_id,
+                daily_report_enabled: merchantSettings.daily_report_enabled
+            };
+
+            const { error: updateError } = await supabase
+                .from('merchants')
+                .update({ settings: newSettings })
+                .eq('id', merchantId);
+
+            if (updateError) throw updateError;
+
+            setMerchantSettingsMessage({ text: '系統設定儲存成功！', type: 'success' });
+        } catch (err) {
+            console.error(err);
+            setMerchantSettingsMessage({ text: err.message || '儲存失敗', type: 'error' });
+        } finally {
+            setMerchantSettingsLoading(false);
         }
     };
 
@@ -361,6 +415,65 @@ export default function Settings() {
                                 className="w-full h-14 rounded-2xl bg-teal-600 text-white font-black text-lg shadow-xl shadow-teal-100 hover:scale-[1.02] active:scale-95 transition-all mt-4"
                             >
                                 {settingsLoading ? <RefreshCw className="w-5 h-5 animate-spin mr-2" /> : '儲存分店設定 Save Changes'}
+                            </Button>
+                        </div>
+                    </div>
+                </Card>
+                {/* LINE Report Card */}
+                <Card className="p-8 border-0 shadow-soft-2xl rounded-[2.5rem] bg-white relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-green-50 rounded-bl-[5rem] -mr-10 -mt-10 transition-transform group-hover:scale-110 duration-700" />
+                    <div className="relative z-10">
+                        <div className="flex items-center gap-4 mb-8">
+                            <div className="w-12 h-12 bg-green-50 text-green-600 rounded-2xl flex items-center justify-center shadow-sm">
+                                <RefreshCw className="w-6 h-6" />
+                            </div>
+                            <h2 className="text-2xl font-black text-slate-900">LINE 每日報表</h2>
+                        </div>
+
+                        <div className="space-y-6">
+                            <div className="space-y-3">
+                                <Label className="font-black text-slate-400 uppercase text-[10px] tracking-[0.2em] ml-1">報表推送狀態</Label>
+                                <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                                    <div className="flex items-center gap-3">
+                                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${merchantSettings.daily_report_enabled ? 'bg-green-100 text-green-600' : 'bg-slate-200 text-slate-400'}`}>
+                                            <Check className="w-5 h-5" />
+                                        </div>
+                                        <div>
+                                            <p className="font-black text-sm text-slate-900">啟用報表</p>
+                                            <p className="text-xs text-slate-400 font-bold">每天 00:00 自動發送昨日營運數據</p>
+                                        </div>
+                                    </div>
+                                    <button
+                                        onClick={() => setMerchantSettings(prev => ({ ...prev, daily_report_enabled: !prev.daily_report_enabled }))}
+                                        className={`w-14 h-8 rounded-full transition-all duration-300 relative ${merchantSettings.daily_report_enabled ? 'bg-green-500' : 'bg-slate-300'}`}
+                                    >
+                                        <div className={`w-6 h-6 bg-white rounded-full shadow-md absolute top-1 transition-all duration-300 ${merchantSettings.daily_report_enabled ? 'left-7' : 'left-1'}`} />
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label className="font-black text-slate-400 uppercase text-[10px] tracking-[0.2em] ml-1">LINE User ID (接收對象)</Label>
+                                <Input
+                                    type="text"
+                                    value={merchantSettings.line_user_id}
+                                    onChange={(e) => setMerchantSettings({ ...merchantSettings, line_user_id: e.target.value })}
+                                    className="h-14 rounded-2xl bg-slate-50 border-transparent focus:bg-white focus:border-green-500/30 transition-all font-bold px-5"
+                                    placeholder="U..."
+                                />
+                                <p className="text-[10px] text-slate-400 font-bold px-1">請輸入您的 LINE User ID，系統將會推送報表至此內容。</p>
+                            </div>
+
+                            {merchantSettingsMessage.text && (
+                                <StatusAlert message={merchantSettingsMessage.text} type={merchantSettingsMessage.type} />
+                            )}
+
+                            <Button
+                                onClick={handleSaveMerchantSettings}
+                                disabled={merchantSettingsLoading}
+                                className="w-full h-14 rounded-2xl bg-green-600 text-white font-black text-lg shadow-xl shadow-green-100 hover:scale-[1.02] active:scale-95 transition-all mt-4"
+                            >
+                                {merchantSettingsLoading ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : '儲存推送設定 Update LINE Settings'}
                             </Button>
                         </div>
                     </div>
