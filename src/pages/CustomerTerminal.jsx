@@ -270,12 +270,32 @@ export default function CustomerTerminal({ onLogout }) {
 
     const triggerConfetti = () => {
         if (!enableConfetti) return;
-        confetti({
-            particleCount: 100,
-            spread: 70,
-            origin: { y: 0.6 },
-            colors: theme.primary === 'teal-600' ? ['#0d9488', '#14b8a6', '#5eead4'] : undefined
-        });
+
+        const end = Date.now() + 1000;
+        const colors = theme.primary === 'teal-600' ? ['#0d9488', '#14b8a6', '#5eead4'] : undefined;
+
+        (function frame() {
+            // Left Cannon
+            confetti({
+                particleCount: 2,
+                angle: 60,
+                spread: 55,
+                origin: { x: 0, y: 1 },
+                colors: colors
+            });
+            // Right Cannon
+            confetti({
+                particleCount: 2,
+                angle: 120,
+                spread: 55,
+                origin: { x: 1, y: 1 },
+                colors: colors
+            });
+
+            if (Date.now() < end) {
+                requestAnimationFrame(frame);
+            }
+        }());
     };
 
     // --- Action View Logic ---
