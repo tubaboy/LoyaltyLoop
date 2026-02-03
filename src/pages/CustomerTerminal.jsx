@@ -272,7 +272,17 @@ export default function CustomerTerminal({ onLogout }) {
         if (!enableConfetti) return;
 
         const end = Date.now() + 1000;
-        const colors = theme.primary === 'teal-600' ? ['#0d9488', '#14b8a6', '#5eead4'] : undefined;
+
+        // 繽紛配色方案：主題色 + 亮點色 (金/粉/白)
+        const themeColors = {
+            'teal-600': ['#0d9488', '#2dd4bf', '#fbbf24', '#f472b6', '#ffffff'],
+            'indigo-600': ['#4338ca', '#818cf8', '#f59e0b', '#ec4899', '#ffffff'],
+            'rose-600': ['#be123c', '#fb7185', '#2dd4bf', '#fcd34d', '#ffffff'],
+            'amber-600': ['#b45309', '#fbbf24', '#3b82f6', '#10b981', '#ffffff'],
+            'emerald-600': ['#047857', '#34d399', '#f43f5e', '#6366f1', '#ffffff'],
+            'slate-700': ['#334155', '#94a3b8', '#fbbf24', '#f43f5e', '#ffffff'],
+        };
+        const colors = themeColors[theme.primary] || ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#ffffff'];
 
         (function frame() {
             // Left Cannon
