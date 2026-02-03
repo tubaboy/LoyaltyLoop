@@ -45,7 +45,7 @@ export const store = {
 
             const queryPromise = supabase.from('profiles').select('role').eq('id', user.id).maybeSingle();
             const timeoutPromise = new Promise((_, reject) =>
-                setTimeout(() => reject(new Error('Database query timed out (10s)')), 10000)
+                setTimeout(() => reject(new Error('Database query timed out (3s)')), 3000)
             );
 
             try {

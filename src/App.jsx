@@ -162,8 +162,20 @@ function App() {
         if (mounted) {
           setSession(session);
           if (session) {
-            console.log("[App] 🔄 Triggering initial fetchRole...");
-            await fetchRole(session.user);
+            const cachedRole = store.getCachedRole();
+            if (cachedRole) {
+              // ⚡ Performance optimization: If we have a cached role, show the UI immediately
+              // and refresh the role in the background to ensure consistency.
+              console.log("[App] ⚡ Using cached role:", cachedRole, "- Showing UI immediately");
+              setUserRole(cachedRole);
+              setLoading(false);
+              fetchRole(session.user); // Background refresh
+            } else {
+              // No cache, must wait for initial fetch (e.g. first login)
+              console.log("[App] 🔄 No cached role found, performing mandatory fetch...");
+              await fetchRole(session.user);
+              setLoading(false);
+            }
           } else {
             setLoading(false);
           }
