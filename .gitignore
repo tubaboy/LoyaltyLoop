@@ -35,3 +35,6 @@ dist-ssr
 
 # Migration Scripts
 scripts/
+
+# n8n Workflows
+n8n/
