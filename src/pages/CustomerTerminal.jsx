@@ -169,7 +169,7 @@ export default function CustomerTerminal({ onLogout }) {
     const [message, setMessage] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [options, setOptions] = useState([]); // Dynamic Add/Redeem presets
-    const [terminalInfo, setTerminalInfo] = useState({ store_name: '', branch_name: '' });
+    const [terminalInfo, setTerminalInfo] = useState({ store_name: '', branch_name: '', logo_url: null });
     const [redemptionCount, setRedemptionCount] = useState(0);
 
     // Custom Points State
@@ -204,7 +204,8 @@ export default function CustomerTerminal({ onLogout }) {
         if (session) {
             setTerminalInfo({
                 store_name: session.store_name,
-                branch_name: session.branch_name
+                branch_name: session.branch_name,
+                logo_url: session.logo_url
             });
             setTheme(THEME_MAP[session.theme_color] || THEME_MAP.teal);
             setResetInterval(session.reset_interval || 10);
@@ -428,8 +429,12 @@ export default function CustomerTerminal({ onLogout }) {
                                     <div className="space-y-6">
                                         <div className="space-y-4">
                                             <div className="flex items-center gap-4 mb-6">
-                                                <div className={cn("w-16 h-16 p-2 bg-white rounded-full flex items-center justify-center shadow-lg", `shadow-${theme.primary}/10`)}>
-                                                    <img src={`${import.meta.env.BASE_URL}logo.png`} alt="LoyaltyLoop Logo" className="w-full h-full object-contain mix-blend-multiply" />
+                                                <div className={cn("w-16 h-16 p-1 bg-white rounded-full flex items-center justify-center shadow-lg overflow-hidden", `shadow-${theme.primary}/10`)}>
+                                                    <img
+                                                        src={terminalInfo.logo_url || `${import.meta.env.BASE_URL}logo.png`}
+                                                        alt="LoyaltyLoop Logo"
+                                                        className={cn("w-full h-full", terminalInfo.logo_url ? "object-cover rounded-full" : "object-contain mix-blend-multiply")}
+                                                    />
                                                 </div>
                                                 <div>
                                                     <h2 className="text-4xl lg:text-5xl font-black text-slate-900 tracking-tight">顧客查詢</h2>
@@ -561,8 +566,12 @@ export default function CustomerTerminal({ onLogout }) {
                                                 {phone.replace(/(\d{4})(\d{6})/, '$1-$2')}
                                             </div>
                                         </div>
-                                        <div className="bg-white p-1.5 rounded-full shadow-lg">
-                                            <img src={`${import.meta.env.BASE_URL}logo.png`} alt="Logo" className="w-8 h-8 mix-blend-multiply object-contain" />
+                                        <div className="bg-white p-1 rounded-full shadow-lg overflow-hidden w-11 h-11 flex items-center justify-center">
+                                            <img
+                                                src={terminalInfo.logo_url || `${import.meta.env.BASE_URL}logo.png`}
+                                                alt="Logo"
+                                                className={cn("w-full h-full", terminalInfo.logo_url ? "object-cover rounded-full" : "object-contain mix-blend-multiply")}
+                                            />
                                         </div>
                                     </div>
 

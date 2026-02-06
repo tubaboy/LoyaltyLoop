@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
-import { Loader2, ShieldCheck, Palette, Timer, Check, RefreshCw, AlertCircle, XCircle, Info, Sparkles, MessageCircle, Copy } from 'lucide-react';
+import { Loader2, ShieldCheck, Palette, Timer, Check, RefreshCw, AlertCircle, XCircle, Info, Sparkles, MessageCircle, Copy, Image as ImageIcon, Upload } from 'lucide-react';
 import { cn } from "@/lib/utils";
 
 const StatusAlert = ({ message, type = 'error' }) => {
@@ -62,7 +62,7 @@ export default function Settings() {
     const [pwMessage, setPwMessage] = useState({ text: '', type: '' });
 
     // Branch Settings State
-    const [branchSettings, setBranchSettings] = useState({ theme_color: 'teal', reset_interval: 10, enable_confetti: true });
+    const [branchSettings, setBranchSettings] = useState({ theme_color: 'teal', reset_interval: 10, enable_confetti: true, logo_url: null });
     const [settingsLoading, setSettingsLoading] = useState(false);
     const [settingsMessage, setSettingsMessage] = useState({ text: '', type: '' });
 
@@ -107,7 +107,8 @@ export default function Settings() {
                 setBranchSettings({
                     theme_color: data[0].theme_color || 'teal',
                     reset_interval: data[0].reset_interval || 10,
-                    enable_confetti: data[0].enable_confetti !== false
+                    enable_confetti: data[0].enable_confetti !== false,
+                    logo_url: data[0].logo_url || null
                 });
             }
 
@@ -150,7 +151,8 @@ export default function Settings() {
             setBranchSettings({
                 theme_color: branch.theme_color || 'teal',
                 reset_interval: branch.reset_interval || 10,
-                enable_confetti: branch.enable_confetti !== false
+                enable_confetti: branch.enable_confetti !== false,
+                logo_url: branch.logo_url || null
             });
         }
     };
@@ -185,6 +187,65 @@ export default function Settings() {
         }
     };
 
+
+    const handleLogoUpload = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        // Validation: Size < 2MB, Type Image
+        if (file.size > 2 * 1024 * 1024) {
+            setSettingsMessage({ text: '檔案大小請勿超過 2MB', type: 'error' });
+            return;
+        }
+        if (!file.type.startsWith('image/')) {
+            setSettingsMessage({ text: '請上傳圖片檔案', type: 'error' });
+            return;
+        }
+
+        try {
+            setSettingsLoading(true);
+            const fileExt = file.name.split('.').pop();
+            const fileName = `${selectedBranchId}/${Date.now()}.${fileExt}`;
+            const filePath = `branch_logos/${fileName}`;
+            const branchFolder = `branch_logos/${selectedBranchId}/`;
+
+            // 1. Cleanup: List and delete old files in this branch's folder
+            const { data: existingFiles } = await supabase.storage
+                .from('logos')
+                .list(`branch_logos/${selectedBranchId}`); // Do not use trailing slash for list in some versions, but folders need care.
+
+            if (existingFiles && existingFiles.length > 0) {
+                // Filter out .emptyFolderPlaceholder if you use it, though here we just delete everything
+                const filesToRemove = existingFiles
+                    .filter(f => f.name !== '.emptyFolderPlaceholder')
+                    .map(f => `branch_logos/${selectedBranchId}/${f.name}`);
+
+                if (filesToRemove.length > 0) {
+                    await supabase.storage.from('logos').remove(filesToRemove);
+                }
+            }
+
+            // 2. Upload new file
+            const { error: uploadError } = await supabase.storage
+                .from('logos')
+                .upload(filePath, file);
+
+            if (uploadError) throw uploadError;
+
+            const { data: { publicUrl } } = supabase.storage
+                .from('logos')
+                .getPublicUrl(filePath);
+
+            setBranchSettings(prev => ({ ...prev, logo_url: publicUrl }));
+            setSettingsMessage({ text: '圖片上傳成功！請記得點擊儲存設定。', type: 'success' });
+        } catch (err) {
+            console.error(err);
+            setSettingsMessage({ text: err.message || '圖片上傳失敗', type: 'error' });
+        } finally {
+            setSettingsLoading(false);
+        }
+    };
+
     const handleSaveBranchSettings = async () => {
         if (!selectedBranchId) {
             setSettingsMessage({ text: '請先新增分店資料', type: 'warning' });
@@ -199,7 +260,8 @@ export default function Settings() {
                 .update({
                     theme_color: branchSettings.theme_color,
                     reset_interval: branchSettings.reset_interval,
-                    enable_confetti: branchSettings.enable_confetti
+                    enable_confetti: branchSettings.enable_confetti,
+                    logo_url: branchSettings.logo_url
                 })
                 .eq('id', selectedBranchId);
 
@@ -403,6 +465,54 @@ export default function Settings() {
                                 </select>
                             </div>
 
+                            {/* Logo Upload */}
+                            <div className="space-y-3">
+                                <Label className="font-black text-slate-400 uppercase text-[10px] tracking-[0.2em] ml-1">分店 LOGO Branch Logo</Label>
+                                <div className="flex items-start gap-6">
+                                    <div className="shrink-0 relative group">
+                                        <div className="w-24 h-24 rounded-full bg-slate-100 border-4 border-slate-50 shadow-soft-sm flex items-center justify-center overflow-hidden">
+                                            {branchSettings.logo_url ? (
+                                                <img src={branchSettings.logo_url} alt="Branch Logo" className="w-full h-full object-cover" />
+                                            ) : (
+                                                <ImageIcon className="w-8 h-8 text-slate-300" />
+                                            )}
+                                        </div>
+                                        {branchSettings.logo_url && (
+                                            <button
+                                                onClick={() => setBranchSettings(prev => ({ ...prev, logo_url: null }))}
+                                                className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-1 shadow-md hover:bg-red-600 transition-colors"
+                                                title="移除 Logo"
+                                            >
+                                                <XCircle className="w-4 h-4" />
+                                            </button>
+                                        )}
+                                    </div>
+                                    <div className="flex-1 space-y-2">
+                                        <div className="relative">
+                                            <input
+                                                type="file"
+                                                accept="image/*"
+                                                onChange={handleLogoUpload}
+                                                className="hidden"
+                                                id="logo-upload"
+                                                disabled={settingsLoading}
+                                            />
+                                            <label
+                                                htmlFor="logo-upload"
+                                                className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl font-bold text-slate-700 shadow-sm hover:bg-slate-50 hover:border-slate-300 cursor-pointer transition-all active:scale-95"
+                                            >
+                                                {settingsLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                                                {branchSettings.logo_url ? '更換圖片' : '上傳圖片'}
+                                            </label>
+                                        </div>
+                                        <p className="text-[10px] text-slate-400 font-bold leading-relaxed">
+                                            建議尺寸 200x200 像素，支援 JPG, PNG 格式。<br />
+                                            若未上傳，將顯示系統預設 Logo。
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
                             {/* Theme Color Selection */}
                             <div className="space-y-3">
                                 <Label className="font-black text-slate-400 uppercase text-[10px] tracking-[0.2em] ml-1">主題顏色 Theme Color</Label>
@@ -510,7 +620,7 @@ export default function Settings() {
                                         </div>
                                         <div>
                                             <p className="font-black text-sm text-slate-900">啟用報表</p>
-                                            <p className="text-xs text-slate-400 font-bold">每天 00:00 自動發送昨日營運數據</p>
+                                            <p className="text-xs text-slate-400 font-bold">每天10:00自動發送今日營運數據</p>
                                         </div>
                                     </div>
                                     <button

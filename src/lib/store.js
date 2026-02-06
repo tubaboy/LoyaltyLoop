@@ -75,7 +75,7 @@ export const store = {
         // Query branches by key
         const { data, error } = await supabase
             .from('branches')
-            .select('id, name, merchant_id, is_active, daily_redemption_limit, theme_color, reset_interval, enable_confetti, store_name:merchants(store_name)')
+            .select('id, name, merchant_id, is_active, daily_redemption_limit, theme_color, reset_interval, enable_confetti, logo_url, store_name:merchants(store_name)')
             .eq('login_key', key)
             .maybeSingle();
 
@@ -91,6 +91,7 @@ export const store = {
             theme_color: data.theme_color || 'teal',
             reset_interval: data.reset_interval || 10,
             enable_confetti: data.enable_confetti !== false, // Default true
+            logo_url: data.logo_url || null,
             store_name: (data.store_name && data.store_name.store_name) || 'Unknown Store'
         };
     },
