@@ -62,7 +62,7 @@ export default function Settings() {
     const [pwMessage, setPwMessage] = useState({ text: '', type: '' });
 
     // Branch Settings State
-    const [branchSettings, setBranchSettings] = useState({ theme_color: 'teal', reset_interval: 10, enable_confetti: true, logo_url: null });
+    const [branchSettings, setBranchSettings] = useState({ theme_color: 'teal', reset_interval: 10, enable_confetti: true, enable_sound: true, logo_url: null });
     const [settingsLoading, setSettingsLoading] = useState(false);
     const [settingsMessage, setSettingsMessage] = useState({ text: '', type: '' });
 
@@ -108,6 +108,7 @@ export default function Settings() {
                     theme_color: data[0].theme_color || 'teal',
                     reset_interval: data[0].reset_interval || 10,
                     enable_confetti: data[0].enable_confetti !== false,
+                    enable_sound: data[0].enable_sound !== false,
                     logo_url: data[0].logo_url || null
                 });
             }
@@ -152,6 +153,7 @@ export default function Settings() {
                 theme_color: branch.theme_color || 'teal',
                 reset_interval: branch.reset_interval || 10,
                 enable_confetti: branch.enable_confetti !== false,
+                enable_sound: branch.enable_sound !== false,
                 logo_url: branch.logo_url || null
             });
         }
@@ -261,6 +263,7 @@ export default function Settings() {
                     theme_color: branchSettings.theme_color,
                     reset_interval: branchSettings.reset_interval,
                     enable_confetti: branchSettings.enable_confetti,
+                    enable_sound: branchSettings.enable_sound,
                     logo_url: branchSettings.logo_url
                 })
                 .eq('id', selectedBranchId);
@@ -566,7 +569,9 @@ export default function Settings() {
                             {/* Confetti Toggle */}
                             <div className="space-y-3">
                                 <Label className="font-black text-slate-400 uppercase text-[10px] tracking-[0.2em] ml-1">特效設定 Effects</Label>
-                                <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
+
+                                {/* Confetti */}
+                                <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100 mb-3">
                                     <div className="flex items-center gap-3">
                                         <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${branchSettings.enable_confetti ? 'bg-teal-100 text-teal-600' : 'bg-slate-200 text-slate-400'}`}>
                                             <Sparkles className="w-5 h-5" />
@@ -581,6 +586,25 @@ export default function Settings() {
                                         className={`w-14 h-8 rounded-full transition-all duration-300 relative ${branchSettings.enable_confetti ? 'bg-teal-500' : 'bg-slate-300'}`}
                                     >
                                         <div className={`w-6 h-6 bg-white rounded-full shadow-md absolute top-1 transition-all duration-300 ${branchSettings.enable_confetti ? 'left-7' : 'left-1'}`} />
+                                    </button>
+                                </div>
+
+                                {/* Sound */}
+                                <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                                    <div className="flex items-center gap-3">
+                                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${branchSettings.enable_sound ? 'bg-indigo-100 text-indigo-600' : 'bg-slate-200 text-slate-400'}`}>
+                                            <MessageCircle className="w-5 h-5" />
+                                        </div>
+                                        <div>
+                                            <p className="font-black text-sm text-slate-900">音效回饋</p>
+                                            <p className="text-xs text-slate-400 font-bold">操作成功時播放金幣或慶祝音效</p>
+                                        </div>
+                                    </div>
+                                    <button
+                                        onClick={() => setBranchSettings(prev => ({ ...prev, enable_sound: !prev.enable_sound }))}
+                                        className={`w-14 h-8 rounded-full transition-all duration-300 relative ${branchSettings.enable_sound ? 'bg-indigo-500' : 'bg-slate-300'}`}
+                                    >
+                                        <div className={`w-6 h-6 bg-white rounded-full shadow-md absolute top-1 transition-all duration-300 ${branchSettings.enable_sound ? 'left-7' : 'left-1'}`} />
                                     </button>
                                 </div>
                             </div>

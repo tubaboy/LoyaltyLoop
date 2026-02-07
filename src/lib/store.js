@@ -1,5 +1,7 @@
 import { supabase } from './supabase';
 
+const TERMINAL_SESSION_KEY = 'loyalty_terminal_session';
+
 export const store = {
     // Auth
     login: async (email, password) => {
@@ -75,7 +77,7 @@ export const store = {
         // Query branches by key
         const { data, error } = await supabase
             .from('branches')
-            .select('id, name, merchant_id, is_active, daily_redemption_limit, theme_color, reset_interval, enable_confetti, logo_url, store_name:merchants(store_name)')
+            .select('id, name, merchant_id, is_active, daily_redemption_limit, theme_color, reset_interval, enable_confetti, enable_sound, logo_url, store_name:merchants(store_name)')
             .eq('login_key', key)
             .maybeSingle();
 
@@ -91,18 +93,42 @@ export const store = {
             theme_color: data.theme_color || 'teal',
             reset_interval: data.reset_interval || 10,
             enable_confetti: data.enable_confetti !== false, // Default true
+            enable_sound: data.enable_sound !== false, // Default true
             logo_url: data.logo_url || null,
             store_name: (data.store_name && data.store_name.store_name) || 'Unknown Store'
         };
     },
 
     setTerminalSession: (sessionData) => {
-        localStorage.setItem('loyalty_terminal_session', JSON.stringify(sessionData));
+        localStorage.setItem(TERMINAL_SESSION_KEY, JSON.stringify(sessionData));
+    },
+
+    updateTerminalSettings: function (settings) {
+        const currentSession = this.getTerminalSession();
+        if (!currentSession) return false;
+
+        const newSession = {
+            ...currentSession,
+            theme_color: settings.theme_color || currentSession.theme_color,
+            reset_interval: settings.reset_interval || currentSession.reset_interval,
+            enable_confetti: settings.enable_confetti !== undefined ? settings.enable_confetti : currentSession.enable_confetti,
+            enable_sound: settings.enable_sound !== undefined ? settings.enable_sound : (currentSession.enable_sound ?? true), // Default true
+            daily_redemption_limit: settings.daily_redemption_limit !== undefined ? settings.daily_redemption_limit : currentSession.daily_redemption_limit
+        };
+
+        localStorage.setItem(TERMINAL_SESSION_KEY, JSON.stringify(newSession));
+        return true;
     },
 
     getTerminalSession: () => {
-        const data = localStorage.getItem('loyalty_terminal_session');
-        return data ? JSON.parse(data) : null;
+        const data = localStorage.getItem(TERMINAL_SESSION_KEY);
+        if (!data) return null;
+        const session = JSON.parse(data);
+        // Ensure enable_sound defaults to true if not explicitly set
+        if (session && session.enable_sound === undefined) {
+            session.enable_sound = true;
+        }
+        return session;
     },
 
     clearTerminalSession: () => {

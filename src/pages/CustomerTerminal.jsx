@@ -180,6 +180,7 @@ export default function CustomerTerminal({ onLogout }) {
     const [theme, setTheme] = useState(THEME_MAP.teal);
     const [resetInterval, setResetInterval] = useState(10);
     const [enableConfetti, setEnableConfetti] = useState(true);
+    const [enableSound, setEnableSound] = useState(true);
 
     const toggleFullscreen = () => {
         if (!document.fullscreenElement) {
@@ -197,6 +198,14 @@ export default function CustomerTerminal({ onLogout }) {
 
     // Auto-Reset Timer
     const resetTimerRef = useRef(null);
+    const logoImageRef = useRef(null); // Ref for the logo image for confetti
+    const canvasRef = useRef(null);
+    const animationFrameRef = useRef(null);
+    const particlesRef = useRef([]);
+
+    // Audio Refs
+    const coinAudioRef = useRef(new Audio(`${import.meta.env.BASE_URL}coin.mp3`));
+    const celebrateAudioRef = useRef(new Audio(`${import.meta.env.BASE_URL}celebration.mp3`));
 
     // Clear timer when unmounting or changing views intentionally
     useEffect(() => {
@@ -210,6 +219,23 @@ export default function CustomerTerminal({ onLogout }) {
             setTheme(THEME_MAP[session.theme_color] || THEME_MAP.teal);
             setResetInterval(session.reset_interval || 10);
             setEnableConfetti(session.enable_confetti !== false);
+            setEnableSound(session.enable_sound !== false);
+
+            // Audio settings
+            coinAudioRef.current.volume = 0.6;
+            celebrateAudioRef.current.volume = 0.5;
+
+            // Preload logo for confetti
+            const imgUrl = session.logo_url;
+            if (imgUrl) {
+                const img = new Image();
+                img.src = imgUrl;
+                img.onload = () => {
+                    logoImageRef.current = img;
+                };
+            } else {
+                logoImageRef.current = null;
+            }
         }
 
         return () => {
@@ -272,6 +298,12 @@ export default function CustomerTerminal({ onLogout }) {
     const triggerConfetti = () => {
         if (!enableConfetti) return;
 
+        // Play Sound
+        if (enableSound && celebrateAudioRef.current) {
+            celebrateAudioRef.current.currentTime = 0;
+            celebrateAudioRef.current.play().catch(e => console.error("Audio play failed", e));
+        }
+
         const end = Date.now() + 1000;
 
         // 繽紛配色方案：主題色 + 亮點色 (金/粉/白)
@@ -309,6 +341,124 @@ export default function CustomerTerminal({ onLogout }) {
         }());
     };
 
+    // --- Custom Canvas Fountain Logic ---
+    const triggerCoinFountain = () => {
+        if (!enableConfetti) return;
+        const canvas = canvasRef.current;
+        if (!canvas) return; // Allow running without logoImageRef (will use default coin)
+
+        const ctx = canvas.getContext('2d');
+        const width = window.innerWidth;
+        const height = window.innerHeight;
+
+        canvas.width = width;
+        canvas.height = height;
+
+        // Reset particles
+        particlesRef.current = [];
+
+        // Play Sound
+        if (enableSound && coinAudioRef.current) {
+            coinAudioRef.current.currentTime = 0;
+            coinAudioRef.current.play().catch(e => console.error("Audio play failed", e));
+        }
+
+        // Create particles
+        const particleCount = 40;
+        for (let i = 0; i < particleCount; i++) {
+            particlesRef.current.push({
+                x: width / 2,
+                y: height,
+                vx: (Math.random() - 0.5) * 15, // Horizontal spread
+                vy: -(Math.random() * 10 + 22), // Upward velocity (stronger to go higher)
+                gravity: 0.8, // Slightly stronger gravity for better arc
+                rotation: Math.random() * 360,
+                rotationSpeed: (Math.random() - 0.5) * 10,
+                scale: Math.random() * 0.4 + 0.4, // Size variation
+                flipSpeed: (Math.random() - 0.5) * 0.2,
+                flip: 0
+            });
+        }
+
+        const render = () => {
+            ctx.clearRect(0, 0, width, height);
+
+            let activeParticles = 0;
+            const img = logoImageRef.current;
+
+            particlesRef.current.forEach((p, i) => {
+                // Physics
+                p.vy += p.gravity;
+                p.x += p.vx;
+                p.y += p.vy;
+                p.rotation += p.rotationSpeed;
+                p.flip += p.flipSpeed;
+
+                // Bounds check (only stop if below screen)
+                if (p.y < height + 100) {
+                    activeParticles++;
+
+                    ctx.save();
+                    ctx.translate(p.x, p.y);
+                    ctx.rotate((p.rotation * Math.PI) / 180);
+                    ctx.scale(p.scale, p.scale * Math.cos(p.flip)); // Flip effect
+
+                    // Draw Coin Shape
+                    ctx.beginPath();
+                    ctx.arc(0, 0, 40, 0, Math.PI * 2);
+                    ctx.closePath();
+
+                    if (img) {
+                        // Draw Image Coin
+                        ctx.save();
+                        ctx.clip();
+                        ctx.drawImage(img, -40, -40, 80, 80);
+                        ctx.restore();
+
+                        // Border
+                        ctx.lineWidth = 4;
+                        ctx.strokeStyle = '#FFD700';
+                        ctx.stroke();
+                    } else {
+                        // Draw Default '$' Coin
+                        ctx.fillStyle = '#FFD700'; // Gold Background
+                        ctx.fill();
+
+                        // Inner Ring
+                        ctx.beginPath();
+                        ctx.arc(0, 0, 32, 0, Math.PI * 2);
+                        ctx.lineWidth = 2;
+                        ctx.strokeStyle = '#DAA520'; // GoldenRod
+                        ctx.stroke();
+
+                        // '$' Symbol
+                        ctx.fillStyle = '#B8860B'; // DarkGoldenRod Text
+                        ctx.font = 'bold 50px sans-serif';
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        ctx.fillText('$', 0, 4);
+
+                        // Outer Border
+                        ctx.lineWidth = 4;
+                        ctx.strokeStyle = '#DAA520'; // GoldenRod Border
+                        ctx.stroke();
+                    }
+
+                    ctx.restore();
+                }
+            });
+
+            if (activeParticles > 0) {
+                animationFrameRef.current = requestAnimationFrame(render);
+            } else {
+                ctx.clearRect(0, 0, width, height);
+            }
+        };
+
+        if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
+        render();
+    };
+
     // --- Action View Logic ---
     const handleBack = () => {
         cancelAutoReset();
@@ -319,6 +469,12 @@ export default function CustomerTerminal({ onLogout }) {
         setCustomAmount('');
         setCustomMode('add');
         setView('search');
+        if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
+        const canvas = canvasRef.current;
+        if (canvas) {
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
     };
 
     // Global interaction handler to pause/reset timer could be here, 
@@ -331,7 +487,7 @@ export default function CustomerTerminal({ onLogout }) {
             const newPoints = await store.addPoints(phone, amount);
             setPoints(newPoints);
             setMessage(`Added ${amount} Point${amount > 1 ? 's' : ''}! 🎉 (Resetting in ${resetInterval}s...)`);
-            triggerConfetti();
+            triggerCoinFountain();
             startAutoReset();
         } catch (error) {
             console.error(error);
@@ -404,7 +560,7 @@ export default function CustomerTerminal({ onLogout }) {
 
     return (
         <div className={cn("min-h-screen bg-slate-50 flex flex-col font-sans", theme.selection)}>
-
+            <canvas ref={canvasRef} className="fixed inset-0 pointer-events-none z-[9999]" />
 
             <main className="flex-1 overflow-auto relative">
                 {/* View 1: Search (Keypad) - Landscape Optimized */}
