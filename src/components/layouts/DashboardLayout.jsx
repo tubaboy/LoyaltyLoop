@@ -3,6 +3,7 @@ import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { store } from '../../lib/store';
 import { supabase } from '../../lib/supabase';
 import { LayoutDashboard, Store, Gift, Settings, Users, LogOut, FileText } from 'lucide-react';
+import packageJson from '../../../package.json';
 
 const DashboardLayout = ({ role = 'merchant' }) => {
     const navigate = useNavigate();
@@ -95,7 +96,7 @@ const DashboardLayout = ({ role = 'merchant' }) => {
                         安全登出
                     </button>
                     <div className="mt-6 text-center text-[10px] font-bold text-slate-600 uppercase tracking-widest">
-                        v2.0.4 Pre-Release
+                        v{packageJson.version}
                     </div>
                 </div>
             </aside>

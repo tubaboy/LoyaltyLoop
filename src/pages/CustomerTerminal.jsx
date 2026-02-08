@@ -220,6 +220,14 @@ export default function CustomerTerminal({ onLogout }) {
             setResetInterval(session.reset_interval || 10);
             setEnableConfetti(session.enable_confetti !== false);
             setEnableSound(session.enable_sound !== false);
+            // New Effect Settings
+            const collectionEffect = session.point_collection_effect || 'shower';
+            const redemptionEffect = session.redemption_effect || 'confetti';
+            // Store in refs to access in callbacks without dependency issues if needed, or state
+            // Let's use state for reactiveness if we ever update session live, but references are usually fine.
+            // Actually, we can just read from store directly in the trigger functions or use state.
+            // Let's use refs for effects config to avoid re-renders if possible, or just read session in triggers.
+            // For now, let's just rely on store.getTerminalSession() inside triggers for latest config.
 
             // Audio settings
             coinAudioRef.current.volume = 0.6;
@@ -296,13 +304,30 @@ export default function CustomerTerminal({ onLogout }) {
     };
 
     const triggerConfetti = () => {
+        // 1. Play Sound (Controlled by enableSound only)
+        if (enableSound && celebrateAudioRef.current) {
+            celebrateAudioRef.current.volume = 1.0; // Boost volume
+            celebrateAudioRef.current.currentTime = 0;
+            const playPromise = celebrateAudioRef.current.play();
+            if (playPromise !== undefined) {
+                playPromise.catch(e => {
+                    console.error("Redemption Audio play failed:", e);
+                    // Retrying once can sometimes help with race conditions
+                    setTimeout(() => {
+                        if (celebrateAudioRef.current) {
+                            celebrateAudioRef.current.play().catch(e2 => console.error("Retry failed:", e2));
+                        }
+                    }, 100);
+                });
+            }
+        }
+
+        // 2. Visual Effects (Controlled by enableConfetti)
         if (!enableConfetti) return;
 
-        // Play Sound
-        if (enableSound && celebrateAudioRef.current) {
-            celebrateAudioRef.current.currentTime = 0;
-            celebrateAudioRef.current.play().catch(e => console.error("Audio play failed", e));
-        }
+        // Check configured effect
+        const session = store.getTerminalSession();
+        const effect = session?.redemption_effect || 'confetti';
 
         const end = Date.now() + 1000;
 
@@ -317,33 +342,220 @@ export default function CustomerTerminal({ onLogout }) {
         };
         const colors = themeColors[theme.primary] || ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#ffffff'];
 
-        (function frame() {
-            // Left Cannon
-            confetti({
-                particleCount: 2,
-                angle: 60,
-                spread: 55,
-                origin: { x: 0, y: 1 },
-                colors: colors
+        if (effect === 'balloons') {
+            triggerBalloonAscent(colors);
+        } else {
+            // Default Confetti
+            (function frame() {
+                // Left Cannon
+                confetti({
+                    particleCount: 2,
+                    angle: 60,
+                    spread: 55,
+                    origin: { x: 0, y: 1 },
+                    colors: colors
+                });
+                // Right Cannon
+                confetti({
+                    particleCount: 2,
+                    angle: 120,
+                    spread: 55,
+                    origin: { x: 1, y: 1 },
+                    colors: colors
+                });
+
+                if (Date.now() < end) {
+                    requestAnimationFrame(frame);
+                }
+            }());
+        }
+    };
+
+    // --- Balloon Effect ---
+    const triggerBalloonAscent = (colors) => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+
+        const ctx = canvas.getContext('2d');
+        const width = window.innerWidth;
+        const height = window.innerHeight;
+        canvas.width = width;
+        canvas.height = height;
+        particlesRef.current = [];
+
+        // Create Balloons
+        const balloonCount = 20;
+        for (let i = 0; i < balloonCount; i++) {
+            particlesRef.current.push({
+                x: Math.random() * width,
+                y: height + Math.random() * 200, // Start below screen
+                speed: 5 + Math.random() * 4, // Increased speed for faster ascent
+                swaySpeed: 0.02 + Math.random() * 0.02,
+                swayRange: 20 + Math.random() * 30,
+                swayOffset: Math.random() * Math.PI * 2,
+                color: colors[Math.floor(Math.random() * colors.length)],
+                size: 25 + Math.random() * 15, // Radius
+                stringLength: 60 + Math.random() * 20
             });
-            // Right Cannon
-            confetti({
-                particleCount: 2,
-                angle: 120,
-                spread: 55,
-                origin: { x: 1, y: 1 },
-                colors: colors
+        }
+
+        const render = () => {
+            ctx.clearRect(0, 0, width, height);
+            let activeParticles = 0;
+
+            particlesRef.current.forEach(p => {
+                // Physics
+                p.y -= p.speed;
+                const sway = Math.sin(p.y * p.swaySpeed + p.swayOffset) * 1; // Subtle sway (simplified calculation)
+                const currentX = p.x + Math.sin(Date.now() * 0.002 + p.swayOffset) * p.swayRange;
+
+                if (p.y > -200) {
+                    activeParticles++;
+
+                    // Draw Balloon String
+                    ctx.beginPath();
+                    ctx.moveTo(currentX, p.y + p.size);
+                    ctx.quadraticCurveTo(
+                        currentX + Math.sin(p.y * 0.05) * 10,
+                        p.y + p.size + p.stringLength / 2,
+                        currentX,
+                        p.y + p.size + p.stringLength
+                    );
+                    ctx.strokeStyle = 'rgba(200, 200, 200, 0.6)';
+                    ctx.lineWidth = 1.5;
+                    ctx.stroke();
+
+                    // Draw Balloon Body (Oval)
+                    ctx.beginPath();
+                    ctx.ellipse(currentX, p.y, p.size * 0.8, p.size, 0, 0, Math.PI * 2);
+                    ctx.fillStyle = p.color;
+                    ctx.fill();
+
+                    // Shine
+                    ctx.beginPath();
+                    ctx.ellipse(currentX - p.size * 0.3, p.y - p.size * 0.3, p.size * 0.2, p.size * 0.15, -Math.PI / 4, 0, Math.PI * 2);
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+                    ctx.fill();
+
+                    // Knot
+                    ctx.beginPath();
+                    ctx.moveTo(currentX, p.y + p.size);
+                    ctx.lineTo(currentX - 4, p.y + p.size + 6);
+                    ctx.lineTo(currentX + 4, p.y + p.size + 6);
+                    ctx.fillStyle = p.color;
+                    ctx.fill();
+                }
             });
 
-            if (Date.now() < end) {
-                requestAnimationFrame(frame);
+            if (activeParticles > 0) {
+                animationFrameRef.current = requestAnimationFrame(render);
+            } else {
+                ctx.clearRect(0, 0, width, height);
             }
-        }());
+        };
+
+        if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
+        render();
     };
 
     // --- Custom Canvas Fountain Logic ---
-    const triggerCoinFountain = () => {
+    const triggerCollectionEffect = () => {
+        // 1. Play Sound (enableSound only)
+        if (enableSound && coinAudioRef.current) {
+            coinAudioRef.current.currentTime = 0;
+            coinAudioRef.current.play().catch(e => console.error("Collection Audio play failed", e));
+        }
+
+        // 2. Visuals (enableConfetti)
         if (!enableConfetti) return;
+
+        const session = store.getTerminalSession();
+        const effect = session?.point_collection_effect || 'shower';
+
+        if (effect === 'flip') {
+            triggerSingleCoinFlip();
+        } else {
+            triggerCoinShower();
+        }
+    };
+
+    const triggerSingleCoinFlip = () => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        const width = window.innerWidth;
+        const height = window.innerHeight;
+        canvas.width = width;
+        canvas.height = height;
+
+        const img = logoImageRef.current;
+        const startTime = Date.now();
+        const duration = 2000; // 2s
+        const msgY = height * 0.7;
+
+        const render = () => {
+            const now = Date.now();
+            const elapsed = now - startTime;
+            const progress = Math.min(elapsed / duration, 1);
+
+            ctx.clearRect(0, 0, width, height);
+
+            if (progress < 1) {
+                // Ease out cubic
+                const ease = 1 - Math.pow(1 - progress, 3);
+
+                // Animation Params
+                const scale = 0.5 + ease * 1.5; // Grow from 0.5 to 2.0
+                const rotations = 3; // Total flips
+                const rotateY = ease * Math.PI * 2 * rotations;
+                const opacity = progress > 0.8 ? 1 - (progress - 0.8) * 5 : 1; // Fade out at end
+
+                ctx.save();
+                ctx.globalAlpha = opacity;
+                ctx.translate(width / 2, height / 2);
+                ctx.scale(Math.cos(rotateY) * scale, scale); // Flip effect uses scaleX
+
+                // Draw Coin
+                ctx.beginPath();
+                ctx.arc(0, 0, 100, 0, Math.PI * 2);
+                ctx.closePath();
+
+                if (img) {
+                    ctx.save();
+                    ctx.clip();
+                    ctx.drawImage(img, -100, -100, 200, 200);
+                    ctx.restore();
+                    ctx.lineWidth = 10;
+                    ctx.strokeStyle = '#FFD700';
+                    ctx.stroke();
+                } else {
+                    ctx.fillStyle = '#FFD700';
+                    ctx.fill();
+                    ctx.lineWidth = 8;
+                    ctx.strokeStyle = '#DAA520';
+                    ctx.stroke();
+                    // Draw $ if facing front (approx)
+                    if (Math.abs(Math.cos(rotateY)) > 0.3) {
+                        ctx.fillStyle = '#B8860B';
+                        ctx.font = 'bold 120px sans-serif';
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        ctx.fillText('$', 0, 10);
+                    }
+                }
+                ctx.restore();
+
+                animationFrameRef.current = requestAnimationFrame(render);
+            } else {
+                ctx.clearRect(0, 0, width, height);
+            }
+        };
+
+        if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
+        render();
+    };
+
+    const triggerCoinShower = () => {
         const canvas = canvasRef.current;
         if (!canvas) return; // Allow running without logoImageRef (will use default coin)
 
@@ -357,14 +569,8 @@ export default function CustomerTerminal({ onLogout }) {
         // Reset particles
         particlesRef.current = [];
 
-        // Play Sound
-        if (enableSound && coinAudioRef.current) {
-            coinAudioRef.current.currentTime = 0;
-            coinAudioRef.current.play().catch(e => console.error("Audio play failed", e));
-        }
-
-        // Create particles
-        const particleCount = 40;
+        // Create particles - Reduced count from 40 to 15 for performance
+        const particleCount = 15;
         for (let i = 0; i < particleCount; i++) {
             particlesRef.current.push({
                 x: width / 2,
@@ -487,7 +693,7 @@ export default function CustomerTerminal({ onLogout }) {
             const newPoints = await store.addPoints(phone, amount);
             setPoints(newPoints);
             setMessage(`Added ${amount} Point${amount > 1 ? 's' : ''}! 🎉 (Resetting in ${resetInterval}s...)`);
-            triggerCoinFountain();
+            triggerCollectionEffect();
             startAutoReset();
         } catch (error) {
             console.error(error);
