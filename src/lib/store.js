@@ -77,7 +77,7 @@ export const store = {
         // Query branches by key
         const { data, error } = await supabase
             .from('branches')
-            .select('id, name, merchant_id, is_active, daily_redemption_limit, theme_color, reset_interval, enable_confetti, enable_sound, logo_url, point_collection_effect, redemption_effect, store_name:merchants(store_name)')
+            .select('id, name, merchant_id, is_active, daily_redemption_limit, theme_color, reset_interval, reminder_interval, enable_confetti, enable_sound, logo_url, point_collection_effect, redemption_effect, store_name:merchants(store_name)')
             .eq('login_key', key)
             .maybeSingle();
 
@@ -92,6 +92,7 @@ export const store = {
             daily_redemption_limit: data.daily_redemption_limit ?? 2,
             theme_color: data.theme_color || 'teal',
             reset_interval: data.reset_interval || 10,
+            reminder_interval: data.reminder_interval ?? 10,
             enable_confetti: data.enable_confetti !== false, // Default true
             enable_sound: data.enable_sound !== false, // Default true
             logo_url: data.logo_url || null,
@@ -112,7 +113,8 @@ export const store = {
         const newSession = {
             ...currentSession,
             theme_color: settings.theme_color || currentSession.theme_color,
-            reset_interval: settings.reset_interval || currentSession.reset_interval,
+            reset_interval: settings.reset_interval !== undefined ? settings.reset_interval : currentSession.reset_interval,
+            reminder_interval: settings.reminder_interval !== undefined ? settings.reminder_interval : currentSession.reminder_interval,
             enable_confetti: settings.enable_confetti !== undefined ? settings.enable_confetti : currentSession.enable_confetti,
             enable_sound: settings.enable_sound !== undefined ? settings.enable_sound : (currentSession.enable_sound ?? true), // Default true
             daily_redemption_limit: settings.daily_redemption_limit !== undefined ? settings.daily_redemption_limit : currentSession.daily_redemption_limit,

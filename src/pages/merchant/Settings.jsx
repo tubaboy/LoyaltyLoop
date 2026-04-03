@@ -50,6 +50,7 @@ const THEME_COLORS = [
 ];
 
 const RESET_INTERVALS = [5, 10, 15, 20, 30];
+const REMINDER_INTERVALS = [10, 20, 30, 60, 0];
 
 export default function Settings() {
     const [loading, setLoading] = useState(true);
@@ -65,6 +66,7 @@ export default function Settings() {
     const [branchSettings, setBranchSettings] = useState({
         theme_color: 'teal',
         reset_interval: 10,
+        reminder_interval: 10,
         enable_confetti: true,
         enable_sound: true,
         logo_url: null,
@@ -115,6 +117,7 @@ export default function Settings() {
                 setBranchSettings({
                     theme_color: data[0].theme_color || 'teal',
                     reset_interval: data[0].reset_interval || 10,
+                    reminder_interval: data[0].reminder_interval ?? 10,
                     enable_confetti: data[0].enable_confetti !== false,
                     enable_sound: data[0].enable_sound !== false,
                     logo_url: data[0].logo_url || null,
@@ -162,6 +165,7 @@ export default function Settings() {
             setBranchSettings({
                 theme_color: branch.theme_color || 'teal',
                 reset_interval: branch.reset_interval || 10,
+                reminder_interval: branch.reminder_interval ?? 10,
                 enable_confetti: branch.enable_confetti !== false,
                 enable_sound: branch.enable_sound !== false,
                 logo_url: branch.logo_url || null,
@@ -274,6 +278,7 @@ export default function Settings() {
                 .update({
                     theme_color: branchSettings.theme_color,
                     reset_interval: branchSettings.reset_interval,
+                    reminder_interval: branchSettings.reminder_interval,
                     enable_confetti: branchSettings.enable_confetti,
                     enable_sound: branchSettings.enable_sound,
                     logo_url: branchSettings.logo_url,
@@ -733,6 +738,30 @@ export default function Settings() {
                                         ))}
                                     </div>
                                     <p className="text-[10px] text-slate-400 font-bold px-1">系統將在完成操作後，於指定秒數內自動返回顧客查詢登入頁面。</p>
+                                </div>
+
+                                {/* Reminder Interval Selection */}
+                                <div className="space-y-3">
+                                    <Label className="font-black text-slate-400 uppercase text-[10px] tracking-[0.2em] ml-1 flex items-center gap-2">
+                                        <AlertCircle className="w-3 h-3" /> 提醒行動秒數 Reminder Interval
+                                    </Label>
+                                    <div className="flex flex-wrap gap-2">
+                                        {REMINDER_INTERVALS.map((sec) => (
+                                            <button
+                                                key={sec}
+                                                onClick={() => setBranchSettings({ ...branchSettings, reminder_interval: sec })}
+                                                className={cn(
+                                                    "px-6 py-3 rounded-xl font-black text-sm transition-all duration-300",
+                                                    branchSettings.reminder_interval === sec
+                                                        ? "bg-red-600 text-white shadow-lg shadow-red-200"
+                                                        : "bg-slate-50 text-slate-400 hover:bg-slate-100"
+                                                )}
+                                            >
+                                                {sec === 0 ? '關閉' : `${sec}s`}
+                                            </button>
+                                        ))}
+                                    </div>
+                                    <p className="text-[10px] text-slate-400 font-bold px-1">若進入集點畫面後未進行操作，系統將每隔指定秒數播放音效與畫面紅框提醒。</p>
                                 </div>
 
                                 {/* Confetti Toggle */}

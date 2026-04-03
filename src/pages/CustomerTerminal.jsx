@@ -179,8 +179,10 @@ export default function CustomerTerminal({ onLogout }) {
     const [isFullscreen, setIsFullscreen] = useState(false);
     const [theme, setTheme] = useState(THEME_MAP.teal);
     const [resetInterval, setResetInterval] = useState(10);
+    const [reminderInterval, setReminderInterval] = useState(10);
     const [enableConfetti, setEnableConfetti] = useState(true);
     const [enableSound, setEnableSound] = useState(true);
+    const [isReminding, setIsReminding] = useState(false);
 
     const toggleFullscreen = () => {
         if (!document.fullscreenElement) {
@@ -196,8 +198,9 @@ export default function CustomerTerminal({ onLogout }) {
         }
     };
 
-    // Auto-Reset Timer
+    // Auto-Reset & Reminder Timers
     const resetTimerRef = useRef(null);
+    const reminderTimerRef = useRef(null);
     const logoImageRef = useRef(null); // Ref for the logo image for confetti
     const canvasRef = useRef(null);
     const animationFrameRef = useRef(null);
@@ -206,6 +209,7 @@ export default function CustomerTerminal({ onLogout }) {
     // Audio Refs
     const coinAudioRef = useRef(new Audio(`${import.meta.env.BASE_URL}coin.mp3`));
     const celebrateAudioRef = useRef(new Audio(`${import.meta.env.BASE_URL}celebration.mp3`));
+    const reminderAudioRef = useRef(new Audio(`${import.meta.env.BASE_URL}universfield-ringtone-021-365652.mp3`));
 
     // Clear timer when unmounting or changing views intentionally
     useEffect(() => {
@@ -218,20 +222,18 @@ export default function CustomerTerminal({ onLogout }) {
             });
             setTheme(THEME_MAP[session.theme_color] || THEME_MAP.teal);
             setResetInterval(session.reset_interval || 10);
+            setReminderInterval(session.reminder_interval ?? 10);
             setEnableConfetti(session.enable_confetti !== false);
             setEnableSound(session.enable_sound !== false);
             // New Effect Settings
             const collectionEffect = session.point_collection_effect || 'shower';
             const redemptionEffect = session.redemption_effect || 'confetti';
-            // Store in refs to access in callbacks without dependency issues if needed, or state
-            // Let's use state for reactiveness if we ever update session live, but references are usually fine.
-            // Actually, we can just read from store directly in the trigger functions or use state.
-            // Let's use refs for effects config to avoid re-renders if possible, or just read session in triggers.
-            // For now, let's just rely on store.getTerminalSession() inside triggers for latest config.
 
             // Audio settings
             coinAudioRef.current.volume = 0.6;
             celebrateAudioRef.current.volume = 0.5;
+            reminderAudioRef.current.volume = 0.8;
+            reminderAudioRef.current.loop = false; // We repeat via timer logic for precision
 
             // Preload logo for confetti
             const imgUrl = session.logo_url;
@@ -248,10 +250,12 @@ export default function CustomerTerminal({ onLogout }) {
 
         return () => {
             if (resetTimerRef.current) clearTimeout(resetTimerRef.current);
+            if (reminderTimerRef.current) clearTimeout(reminderTimerRef.current);
         };
     }, []);
 
     const startAutoReset = () => {
+        cancelReminderTimer(); // No need to remind if we are already resetting
         if (resetTimerRef.current) clearTimeout(resetTimerRef.current);
         resetTimerRef.current = setTimeout(() => {
             handleBack(); // Simply go back to search
@@ -263,6 +267,48 @@ export default function CustomerTerminal({ onLogout }) {
             clearTimeout(resetTimerRef.current);
             resetTimerRef.current = null;
         }
+    };
+
+    // Reminder Logic
+    const startReminderTimer = () => {
+        if (reminderInterval <= 0) return;
+        if (reminderTimerRef.current) clearTimeout(reminderTimerRef.current);
+        reminderTimerRef.current = setTimeout(() => {
+            triggerReminder();
+        }, reminderInterval * 1000);
+    };
+
+    const cancelReminderTimer = () => {
+        if (reminderTimerRef.current) {
+            clearTimeout(reminderTimerRef.current);
+            reminderTimerRef.current = null;
+        }
+        setIsReminding(false);
+    };
+
+    const resetReminderTimer = () => {
+        // If we are currently resetting (after transaction), don't start reminder
+        if (resetTimerRef.current) return;
+        if (view === 'action') {
+            startReminderTimer();
+        }
+    };
+
+    const triggerReminder = () => {
+        if (reminderInterval <= 0 || view !== 'action') return;
+
+        // Play Sound
+        if (enableSound && reminderAudioRef.current) {
+            reminderAudioRef.current.currentTime = 0;
+            reminderAudioRef.current.play().catch(e => console.error("Reminder Audio play failed:", e));
+        }
+
+        // Visual Alert
+        setIsReminding(true);
+        setTimeout(() => setIsReminding(false), 2000); // Pulse for 2 seconds
+
+        // Repeat
+        startReminderTimer();
     };
 
     // --- Keypad Logic (Search View) ---
@@ -279,6 +325,16 @@ export default function CustomerTerminal({ onLogout }) {
     const handleBackspace = () => {
         setPhone(prev => prev.slice(0, -1));
     };
+
+    // Watch for view changes to manage reminder
+    useEffect(() => {
+        if (view === 'action') {
+            startReminderTimer();
+        } else {
+            cancelReminderTimer();
+        }
+        return () => cancelReminderTimer();
+    }, [view, reminderInterval]);
 
     const handleGo = async () => {
         if (phone.length < 10) return;
@@ -907,7 +963,13 @@ export default function CustomerTerminal({ onLogout }) {
 
                 {/* View 2: Action (Dashboard) - Landscape Optimized */}
                 {view === 'action' && (
-                    <div className="w-full h-screen p-4 md:p-6 lg:p-8 overflow-y-auto bg-slate-50">
+                    <div
+                        onPointerDown={resetReminderTimer}
+                        className={cn(
+                            "w-full h-screen p-4 md:p-6 lg:p-8 overflow-y-auto bg-slate-50 transition-all duration-300",
+                            isReminding ? "ring-[12px] ring-inset ring-red-500 shadow-[inset_0_0_100px_rgba(239,68,68,0.5)] animate-pulse" : ""
+                        )}
+                    >
                         <div className={cn(
                             "max-w-[1200px] md:max-w-[1400px] mx-auto min-h-[550px] flex flex-row justify-center gap-6 md:gap-8 items-start pb-20 transition-all duration-500",
                             isFullscreen ? "pt-6" : "pt-10"
